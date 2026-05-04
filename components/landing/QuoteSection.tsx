@@ -8,11 +8,11 @@ export function QuoteSection() {
   return (
     <section
       id="about"
-      className="relative w-full bg-background-brand px-6 py-16 sm:px-12 md:px-[235px] md:py-[80px]"
+      className="relative w-full bg-background-brand px-6 py-16 sm:px-12 md:py-20 lg:px-[235px] lg:py-[80px]"
     >
-      <div className="mx-auto flex max-w-[1205px] flex-col items-center gap-12 md:flex-row md:gap-[80px]">
+      <div className="mx-auto flex max-w-[1205px] flex-col items-center gap-12 lg:flex-row lg:gap-[80px]">
         {/* Instagram post composite */}
-        <div className="relative aspect-[516/833] w-full max-w-[516px] shrink-0 overflow-hidden rounded-2xl bg-cloud-500">
+        <div className="relative aspect-[516/833] w-full max-w-[420px] shrink-0 overflow-hidden rounded-2xl bg-cloud-500 sm:max-w-[460px] lg:max-w-[516px]">
           <Image
             src="/images/instagram-post.png"
             alt=""
@@ -35,7 +35,7 @@ export function QuoteSection() {
         {/* Quote + body */}
         <div className="flex flex-col items-start gap-4">
           <p
-            className="text-[28px] leading-tight tracking-tight text-content-brand sm:text-[40px]"
+            className="leading-tight tracking-tight text-content-brand text-[clamp(24px,5vw,40px)]"
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             <em className="font-display italic">
@@ -44,7 +44,7 @@ export function QuoteSection() {
             shouldn&rsquo;t be a gamble.
           </p>
           <p
-            className="text-[18px] leading-normal tracking-tight text-content-primary sm:text-[20px]"
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             A water bowl by the back door isn&rsquo;t the same as truly

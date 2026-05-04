@@ -16,8 +16,8 @@ import Image from "next/image";
 
 export function FloatingTopBar() {
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-6 pt-6 sm:px-12 sm:pt-10">
-      <div className="pointer-events-auto mx-auto flex max-w-[1440px] items-center justify-between gap-4">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-12 sm:pt-10">
+      <div className="pointer-events-auto mx-auto flex max-w-[1440px] items-center justify-between gap-3 sm:gap-4">
         <Logo />
         <NavPill className="hidden md:flex" />
         <DownloadCta />
@@ -35,13 +35,11 @@ export function SiteHeader() {
   //   Layer 5: HTML store buttons
   return (
     <header className="relative isolate w-full overflow-hidden bg-background-brand">
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: "1440 / 859" }}
-      >
-        {/* Portrait sky+field photo stretched to a landscape frame
-            (matches the Figma source which uses object-fit: fill). The
-            horizontal stretch is what gives the wide, low-horizon look. */}
+      <div className="relative h-[100svh] min-h-[640px] w-full lg:h-auto lg:min-h-0 lg:max-h-[100svh] lg:[aspect-ratio:1440/859]">
+        {/* On mobile/tablet the source PNG is portrait so `cover` fits
+            naturally without horizontal stretch. On desktop the Figma
+            frame is landscape, so the portrait source is stretched (fill)
+            to preserve the original wide low-horizon look. */}
         <Image
           src="/images/header-bg.jpg"
           alt=""
@@ -49,17 +47,17 @@ export function SiteHeader() {
           priority
           sizes="100vw"
           quality={90}
-          className="object-fill object-bottom"
+          className="object-cover object-center lg:object-fill lg:object-bottom"
         />
         <div
           aria-hidden
-          className="absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-b from-transparent to-background-brand"
+          className="absolute inset-x-0 bottom-0 h-[20%] bg-gradient-to-b from-transparent to-background-brand lg:h-[18%]"
         />
 
-{/* headline (centered) */}
-        <div className="absolute inset-x-0 top-[14%] z-10 flex justify-center px-6">
+        {/* Headline (centred) */}
+        <div className="absolute inset-x-4 top-[10%] z-10 flex justify-center sm:inset-x-8 sm:top-[12%] lg:inset-x-0 lg:top-[14%] lg:px-6">
           <h1
-            className="max-w-[978px] text-center text-[32px] leading-tight tracking-tight text-bark-600 sm:text-[48px] md:text-[60px] lg:text-[67px]"
+            className="max-w-[978px] text-center leading-tight tracking-tight text-bark-600 text-[clamp(28px,7vw,48px)] lg:text-[clamp(48px,5vw,67px)]"
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             Find places that{" "}
@@ -68,21 +66,21 @@ export function SiteHeader() {
           </h1>
         </div>
 
-        {/* man + jojo illustration */}
-        <div className="absolute inset-x-0 top-[42%] z-10 flex justify-center px-6">
+        {/* Man + jojo illustration. Mobile/tablet sits roughly mid-stage. */}
+        <div className="absolute inset-x-0 top-[38%] z-10 flex justify-center px-6 sm:top-[40%] lg:top-[42%]">
           <Image
             src="/images/hero-illustration.png"
             alt="A person walking with their dog jojo"
             width={526}
             height={355}
             priority
-            sizes="(max-width: 640px) 280px, (max-width: 1024px) 420px, 526px"
-            className="h-auto w-[280px] sm:w-[360px] md:w-[460px] lg:w-[526px]"
+            sizes="(max-width: 640px) 260px, (max-width: 1024px) 420px, 526px"
+            className="h-auto w-[clamp(220px,55vw,360px)] lg:w-[clamp(360px,40vw,526px)]"
           />
         </div>
 
-        {/* store buttons */}
-        <div className="absolute inset-x-0 bottom-[6%] z-10 flex justify-center gap-3">
+        {/* Store buttons */}
+        <div className="absolute inset-x-0 bottom-[8%] z-10 flex flex-wrap justify-center gap-3 px-6 lg:bottom-[6%]">
           <StoreButton variant="play" />
           <StoreButton variant="apple" />
         </div>
@@ -98,17 +96,17 @@ export function SiteHeaderAlt() {
   //   Layer 3: headline + store buttons (left-aligned, white)
   //   Layer 4: golden-retriever.svg (centre-bottom)
   //   Layer 5: girl-2.svg (right-bottom)
-  // Coordinates from the Figma 1440×859 frame are converted to %.
-  // Hero is capped to viewport height (`max-h-[100svh]`) so the
-  // bottom-anchored characters never get clipped on shorter viewports.
+  // Two layouts share one DOM:
+  //   • Mobile (<sm): 100svh portrait stage. Headline centred at the top,
+  //     characters anchored bottom-left/bottom-right at ~38% / ~46% of
+  //     the viewport so they read at a usable size on a 390px screen.
+  //   • Desktop (≥sm): the original Figma 1440×859 frame, expressed as
+  //     percentage coordinates so it scales fluidly. Capped to 100svh
+  //     so bottom-anchored elements never clip on shorter viewports.
   return (
     <header className="relative isolate w-full overflow-hidden bg-background-brand">
-      <div
-        className="relative mx-auto w-full max-h-[100svh]"
-        style={{ aspectRatio: "1440 / 859" }}
-      >
-        {/* 2880×1920 native landscape, 1.5:1 → 1.676:1 frame, cover crops
-            a sliver from top/bottom. */}
+      <div className="relative mx-auto h-[100svh] min-h-[640px] w-full lg:h-auto lg:min-h-0 lg:max-h-[100svh] lg:[aspect-ratio:1440/859]">
+        {/* 2880×1920 native landscape, cover crops to fit. */}
         <Image
           src="/images/header-bg-alt.jpg"
           alt=""
@@ -120,50 +118,56 @@ export function SiteHeaderAlt() {
         />
         <div
           aria-hidden
-          className="absolute inset-x-0 bottom-0 h-[15%] bg-gradient-to-b from-transparent to-background-brand"
+          className="absolute inset-x-0 bottom-0 h-[20%] bg-gradient-to-b from-transparent to-background-brand lg:h-[15%]"
         />
 
-{/* golden retriever, Figma footprint left=686/1440=47.6%,
-            bottom=(859-603-191)/859=7.6%, w=227/1440=15.8%. Anchored
-            from the bottom so it never clips on short viewports. */}
-        <div className="absolute left-[47.6%] bottom-[7.6%] z-10 w-[15.8%]">
+        {/* Golden retriever.
+            Mobile/tablet: width tracks viewport but height capped to 22vh
+            so the dog never grows tall enough to crowd the headline on a
+            short landscape viewport (e.g. 768×600).
+            Desktop (Figma ≥lg): left 47.6%, bottom 7.6%, w 15.8%. */}
+        <div className="absolute left-[6%] bottom-[6%] z-10 max-h-[22vh] w-[38%] max-w-[260px] lg:left-[47.6%] lg:bottom-[7.6%] lg:max-h-none lg:w-[15.8%] lg:max-w-none">
           <Image
             src="/images/golden-retriever.svg"
             alt=""
             width={227}
             height={191}
             priority
-            className="h-auto w-full"
+            className="h-full w-full object-contain object-bottom lg:h-auto"
           />
         </div>
 
-        {/* girl, Figma footprint left=1008/1440=70%,
-            bottom=(859-373-424)/859=7.2%, w=247/1440=17.2%. Bottom-anchored. */}
-        <div className="absolute left-[70%] bottom-[7.2%] z-10 w-[17.2%]">
+        {/* Girl.
+            Mobile/tablet: max-h-[40vh] so the figure stays in the lower
+            half of a short viewport instead of pushing past the headline.
+            Desktop (Figma ≥lg): left 70%, bottom 7.2%, w 17.2%. */}
+        <div className="absolute right-[2%] bottom-[5%] z-10 max-h-[40vh] w-[46%] max-w-[300px] lg:left-[70%] lg:right-auto lg:bottom-[7.2%] lg:max-h-none lg:w-[17.2%] lg:max-w-none">
           <Image
             src="/images/girl-2.svg"
             alt="A person walking their dog"
             width={247}
             height={424}
             priority
-            className="h-auto w-full"
+            className="h-full w-full object-contain object-bottom lg:h-auto"
           />
         </div>
 
-        {/* headline + store buttons, Figma left=92/1440=6.4%,
-            bottom anchor so the CTA never gets pushed below the fold.
-            Original Figma top=395/859=46%; with the block ~330px tall
-            inside an 859px frame, bottom is ≈15%. */}
-        <div className="absolute left-[6.4%] bottom-[15%] z-20 flex flex-col items-start gap-6 sm:gap-8 lg:gap-10">
+        {/* Headline + store buttons.
+            Mobile/tablet: pinned to the top half (after the floating top
+            bar) with extra top padding so it never overlaps with the
+            characters in the bottom half on short viewports. Headline
+            uses clamp() so it scales smoothly with viewport width.
+            Desktop (Figma ≥lg): left 6.4%, bottom-anchored ~15%. */}
+        <div className="absolute inset-x-4 top-[14%] z-20 flex flex-col items-center gap-4 text-center sm:inset-x-8 sm:top-[16%] sm:gap-6 lg:inset-x-auto lg:left-[6.4%] lg:top-auto lg:bottom-[15%] lg:items-start lg:gap-10 lg:text-left">
           <h1
-            className="max-w-[612px] text-[32px] leading-tight tracking-tight text-white sm:text-[44px] md:text-[56px] lg:text-[67px]"
+            className="max-w-[612px] leading-tight tracking-tight text-white text-[clamp(28px,7vw,44px)] lg:text-[clamp(44px,5vw,67px)]"
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             Find places that{" "}
             <em className="font-display italic">actually work</em> for you
             and your pup
           </h1>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
             <StoreButton variant="play" />
             <StoreButton variant="apple" />
           </div>
@@ -178,14 +182,14 @@ function Logo() {
     <a
       href="#top"
       aria-label="Borkd"
-      className="grid h-[57px] w-[57px] shrink-0 place-items-center rounded-full bg-background-accent shadow-md transition-opacity hover:opacity-90"
+      className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full bg-background-accent shadow-md transition-opacity hover:opacity-90 sm:h-[57px] sm:w-[57px]"
     >
       <Image
         src="/images/illustration/vector6-logo.svg"
         alt=""
         width={30}
         height={26}
-        className="h-[26px] w-[30px]"
+        className="h-[20px] w-[23px] sm:h-[26px] sm:w-[30px]"
       />
     </a>
   );
@@ -219,10 +223,11 @@ function DownloadCta() {
   return (
     <a
       href="#download"
-      className="inline-flex h-[48px] shrink-0 items-center rounded-full bg-background-accent px-5 text-content-contrast shadow-md transition-opacity hover:opacity-90"
+      className="inline-flex h-[40px] shrink-0 items-center rounded-full bg-background-accent px-4 text-content-contrast shadow-md transition-opacity hover:opacity-90 sm:h-[48px] sm:px-5"
     >
-      <em className="font-display text-[20px] italic tracking-tight">
-        Download now
+      <em className="font-display text-[16px] italic tracking-tight sm:text-[20px]">
+        <span className="sm:hidden">Get app</span>
+        <span className="hidden sm:inline">Download now</span>
       </em>
     </a>
   );

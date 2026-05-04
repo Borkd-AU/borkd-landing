@@ -13,19 +13,17 @@ export function StepCard({
   body: string;
 }) {
   return (
-    <div className="flex w-[88vw] max-w-[753px] shrink-0 flex-col gap-4 md:w-[753px]">
+    <div className="flex w-[82vw] max-w-[753px] shrink-0 flex-col gap-4 sm:w-[60vw] lg:w-[753px]">
       <span className="inline-flex w-fit items-center justify-center rounded-full bg-background-accent px-4 py-1">
-        <span className="font-display text-[22px] tracking-tight text-content-contrast">
+        <span className="font-display text-[20px] tracking-tight text-content-contrast sm:text-[22px]">
           Step {number}
         </span>
       </span>
-      <h3
-        className="font-display text-[26px] italic leading-snug tracking-tight text-content-brand sm:text-[30px]"
-      >
+      <h3 className="font-display italic leading-snug tracking-tight text-content-brand text-[clamp(22px,4.5vw,30px)]">
         {title}
       </h3>
       <p
-        className="text-[18px] leading-normal tracking-tight text-content-primary sm:text-[20px]"
+        className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
         style={{ fontVariationSettings: "'opsz' 14" }}
       >
         {body}

@@ -61,7 +61,12 @@ export function StepsSection() {
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
-      if (!desktop || reduced) return;
+      if (!desktop || reduced) {
+        // Clear any inline transforms left over from a previous run
+        // (e.g. the user resized the window from desktop to mobile).
+        gsap.set([headline, track], { clearProps: "all" });
+        return;
+      }
 
       // How far the track needs to slide so its right edge aligns with
       // the stage's right edge. Recomputed on every refresh so font and
@@ -115,11 +120,11 @@ export function StepsSection() {
     >
       <div
         ref={stageRef}
-        className="relative mx-auto flex max-w-[1440px] flex-col gap-12 overflow-hidden px-6 sm:px-12 md:px-[235px] lg:h-screen lg:justify-center lg:gap-20"
+        className="relative mx-auto flex max-w-[1440px] flex-col gap-10 overflow-hidden px-6 sm:gap-12 sm:px-12 lg:h-screen lg:justify-center lg:gap-20 lg:px-[235px]"
       >
         <h2
           ref={headlineRef}
-          className="max-w-[1168px] text-[32px] leading-tight tracking-tight text-content-brand sm:text-[42px] lg:text-[50px]"
+          className="max-w-[1168px] leading-tight tracking-tight text-content-brand text-[clamp(28px,5vw,50px)]"
           style={{ fontVariationSettings: "'opsz' 14" }}
         >
           Think Google Maps, but made for{" "}
@@ -131,12 +136,12 @@ export function StepsSection() {
         <div
           ref={trackRef}
           className="
-            flex gap-10 sm:gap-[80px]
+            -mx-6 flex gap-6 px-6 sm:-mx-12 sm:gap-12 sm:px-12
             overflow-x-auto scroll-smooth pb-4
             snap-x snap-mandatory
             [-ms-overflow-style:none] [scrollbar-width:none]
             [&::-webkit-scrollbar]:hidden
-            lg:overflow-visible lg:pb-0 lg:will-change-transform
+            lg:mx-0 lg:gap-[80px] lg:overflow-visible lg:px-0 lg:pb-0 lg:will-change-transform
           "
         >
           {steps.map((s) => (
