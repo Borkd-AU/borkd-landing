@@ -22,7 +22,7 @@ export function QuoteSection() {
           />
           <div className="absolute bottom-[5%] left-[8%] w-[58%]">
             <Image
-              src="/images/girl-at-cafe.png"
+              src="/images/girl-at-cafe.svg"
               alt="A woman at a café with her dog"
               width={297}
               height={315}
