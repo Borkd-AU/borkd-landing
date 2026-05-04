@@ -1,27 +1,45 @@
 /**
- * Layer 1 — Color primitives
- * Source of truth: Borkd Brand Guidelines (Figma slide 8 + 9)
- * https://www.figma.com/slides/iv9MJgPyyPCvTt5oJ5U6jd/Borkd-Brand-Guidelines
+ * Layer 1 — Color primitives (1:1 mirror of Figma Variables)
  *
- * 6 color families × 11 shades (50–950) — Tailwind-style scale.
- * Edit ANY value here and every component using --color-* utilities updates.
+ * Source: Borkd Design System — Variables → Primitives collection
+ * Figma file: QlPbopY1tKWBPU2hvcWxix
+ * https://www.figma.com/design/QlPbopY1tKWBPU2hvcWxix/Borkd-Design-System
+ *     ?node-id=0-1&view=variables&var-set-id=4-7
+ *
+ * 11 families, 97 variables total. Edit ANY value here and every
+ * component using utility classes updates immediately.
+ *
+ * Naming follows the Figma group/shade convention exactly so designer ↔
+ * code is a 1:1 lookup with no translation cost.
+ *
+ *   Cloud      — cream off-white (page surface)
+ *   Bark       — warm brown (brand, body text)
+ *   Zoomies    — electric blue (primary accent)
+ *   Moss       — green (illustrations, backgrounds)
+ *   Walkies    — warm yellow (illustrations, accents)
+ *   Snoot      — soft pink (illustrations)
+ *   Puddle     — lavender (illustrations)
+ *   Black      — opaque #131218 + alpha steps (overlays, secondary text)
+ *   White      — opaque #FFFFFF + alpha steps (overlays on dark imagery)
+ *   Positive   — teal/green (success states)
+ *   Negative   — crimson (error/destructive states)
  */
 
 :root {
-  /* === CLOUD — cream off-white (page backgrounds) === */
+  /* === CLOUD === */
   --cloud-50:  #FEFEFB;
   --cloud-100: #FDFDF7;
   --cloud-200: #FCFBF4;
   --cloud-300: #FAFAF1;
-  --cloud-400: #F9F9EE;
+  --cloud-400: #F9F8EE;
   --cloud-500: #F7F6EB;
   --cloud-600: #E9E7CB;
   --cloud-700: #DAD7AC;
-  --cloud-800: #CAC88F;
-  --cloud-900: #99B472;
+  --cloud-800: #CAC68F;
+  --cloud-900: #B9B472;
   --cloud-950: #A6A157;
 
-  /* === BARK — warm brown (text, foreground) === */
+  /* === BARK === */
   --bark-50:  #D9CCC5;
   --bark-100: #C5B4AB;
   --bark-200: #B09C92;
@@ -34,7 +52,7 @@
   --bark-900: #151514;
   --bark-950: #030303;
 
-  /* === ZOOMIES — electric blue (primary brand accent) === */
+  /* === ZOOMIES === */
   --zoomies-50:  #FAFAFF;
   --zoomies-100: #D3D3FF;
   --zoomies-200: #ADADFF;
@@ -47,20 +65,33 @@
   --zoomies-900: #09087B;
   --zoomies-950: #07054E;
 
-  /* === PUDDLE — lavender (support) === */
-  --puddle-50:  #FAFBFF;
-  --puddle-100: #F0F4FF;
-  --puddle-200: #E7ECFF;
-  --puddle-300: #DEE8FF;
-  --puddle-400: #D4DFFE;
-  --puddle-500: #CBD9FE;
-  --puddle-600: #9FB8FC;
-  --puddle-700: #7498F9;
-  --puddle-800: #4B77F5;
-  --puddle-900: #2257F0;
-  --puddle-950: #1142D3;
+  /* === MOSS === */
+  --moss-50:  #FEFEFB;
+  --moss-100: #F5F6DB;
+  --moss-200: #E9EDBD;
+  --moss-300: #DCE39E;
+  --moss-400: #CCDA80;
+  --moss-500: #BBCF63;
+  --moss-600: #A9C242;
+  --moss-700: #8BA037;
+  --moss-800: #6C7C2D;
+  --moss-900: #4E5922;
+  --moss-950: #303716;
 
-  /* === SNOOT — soft pink (support) === */
+  /* === WALKIES === */
+  --walkies-50:  #FFFEFA;
+  --walkies-100: #FFF9E3;
+  --walkies-200: #FFF4CD;
+  --walkies-300: #FFEEB7;
+  --walkies-400: #FFE7A0;
+  --walkies-500: #FEE08A;
+  --walkies-600: #FCD45F;
+  --walkies-700: #F9C734;
+  --walkies-800: #F3BB0B;
+  --walkies-900: #C5990C;
+  --walkies-950: #98770B;
+
+  /* === SNOOT === */
   --snoot-50:  #FFFAFB;
   --snoot-100: #FFF1F4;
   --snoot-200: #FEE9ED;
@@ -70,32 +101,53 @@
   --snoot-600: #F4A9B7;
   --snoot-700: #EE8296;
   --snoot-800: #E65C75;
-  --snoot-900: #D03754;
+  --snoot-900: #DD3754;
   --snoot-950: #C2243F;
 
-  /* === WALKIES — warm yellow (support) === */
-  --walkies-50:  #FFFEFA;
-  --walkies-100: #FFF9E3;
-  --walkies-200: #FFF4CD;
-  --walkies-300: #FFEEB7;
-  --walkies-400: #FEE7A0;
-  --walkies-500: #FEE08A;
-  --walkies-600: #FCD45F;
-  --walkies-700: #F9C734;
-  --walkies-800: #F3BB0B;
-  --walkies-900: #C5990C;
-  --walkies-950: #9B770B;
+  /* === PUDDLE === */
+  --puddle-50:  #FAFBFF;
+  --puddle-100: #F0F4FF;
+  --puddle-200: #E7ECFF;
+  --puddle-300: #DEE6FF;
+  --puddle-400: #D4DFFE;
+  --puddle-500: #CBD9FE;
+  --puddle-600: #9FB8FC;
+  --puddle-700: #7498F9;
+  --puddle-800: #4B77F5;
+  --puddle-900: #2257F0;
+  --puddle-950: #1142D3;
 
-  /* === MOSS — green (support) === */
-  --moss-50:  #FEFEFB;
-  --moss-100: #F5F6DB;
-  --moss-200: #EBEDBD;
-  --moss-300: #DCE39E;
-  --moss-400: #CCDA80;
-  --moss-500: #BBCF63;
-  --moss-600: #A9C242;
-  --moss-700: #8BA037;
-  --moss-800: #6C7C2D;
-  --moss-900: #4E5922;
-  --moss-950: #303718;
+  /* === BLACK (opaque + alpha steps) ===
+   * Figma defines these as the same hex (#131218) with varying opacity.
+   * Mirrored here as 8-char hex (RRGGBBAA) to preserve transparency. */
+  --black-100: #1312180D; /*  5% — subtlest fills */
+  --black-200: #13121814; /*  8% — secondary surface tint */
+  --black-300: #1312184D; /* 30% — disabled / muted */
+  --black-400: #13121899; /* 60% — secondary content */
+  --black-500: #131218;   /* 100% — primary content */
+
+  /* === WHITE (opaque + alpha steps) === */
+  --white-100: #FFFFFF1F; /* 12% */
+  --white-200: #FFFFFF29; /* 16% */
+  --white-300: #FFFFFF80; /* 50% */
+  --white-400: #FFFFFFB3; /* 70% */
+  --white-500: #FFFFFF;   /* 100% */
+
+  /* === POSITIVE (success — teal/green) ===
+   * Figma values: 500=#084D3F, 400=#0D8069, 300=#0CAC8C,
+   *               200=#0CAC8C @25%, 100=#11B292 @15% */
+  --positive-100: #11B29226; /* #11B292 @ 15% */
+  --positive-200: #0CAC8C40; /* #0CAC8C @ 25% */
+  --positive-300: #0CAC8C;
+  --positive-400: #0D8069;
+  --positive-500: #084D3F;
+
+  /* === NEGATIVE (error — crimson) ===
+   * Figma values: 500=#7A1425, 400=#AC1B33, 300=#DC2040,
+   *               200=#DC2040 @25%, 100=#DC2040 @15% */
+  --negative-100: #DC204026; /* #DC2040 @ 15% */
+  --negative-200: #DC204040; /* #DC2040 @ 25% */
+  --negative-300: #DC2040;
+  --negative-400: #AC1B33;
+  --negative-500: #7A1425;
 }

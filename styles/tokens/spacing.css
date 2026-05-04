@@ -1,39 +1,45 @@
 /**
- * Layer 1 — Spacing, radius, shadow primitives
- * Source: Borkd Brand Guidelines (Figma variables — size/* tokens)
+ * Layer 1 — Size primitives (1:1 mirror of Figma Variables → Semantics → size)
+ *
+ * 10 steps named XXXSmall → XXXXLarge. Used for spacing, gaps, and any
+ * dimension that should align to the Borkd grid. Component implementers
+ * use Tailwind utilities like p-sm / gap-md / mt-xl that map to these.
+ *
+ * Border radius and shadow tokens (not yet defined in Figma) live here
+ * too; once the designer publishes them they replace these stand-ins.
  */
 
 :root {
-  /* === SPACING SCALE (matches Figma `size/*` variables) === */
-  --space-3xs: 0.25rem;  /* 4   — XXXSmall */
-  --space-2xs: 0.5rem;   /* 8   — XXSmall  */
-  --space-xs:  0.75rem;  /* 12  — XSmall   */
-  --space-sm:  1rem;     /* 16  — Small    */
-  --space-md:  1.5rem;   /* 24             */
-  --space-lg:  2rem;     /* 32  — Large    */
-  --space-xl:  2.5rem;   /* 40  — XLarge   */
-  --space-2xl: 3.5rem;   /* 56             */
-  --space-3xl: 5rem;     /* 80  — XXXXLarge */
-  --space-4xl: 7rem;     /* 112            */
+  /* === SIZE (Figma Semantics → size, all in pixels) === */
+  --size-3xs: 4px;   /* XXXSmall */
+  --size-2xs: 8px;   /* XXSmall  */
+  --size-xs:  12px;  /* XSmall   */
+  --size-sm:  16px;  /* Small    */
+  --size-md:  24px;  /* Medium   */
+  --size-lg:  32px;  /* Large    */
+  --size-xl:  40px;  /* XLarge   */
+  --size-2xl: 48px;  /* XXLarge  */
+  --size-3xl: 64px;  /* XXXLarge */
+  --size-4xl: 80px;  /* XXXXLarge */
 
-  /* === BORDER RADIUS === */
-  --radius-xs:   0.25rem;  /* 4  */
-  --radius-sm:   0.5rem;   /* 8  */
-  --radius-md:   0.75rem;  /* 12 */
-  --radius-lg:   1rem;     /* 16 */
-  --radius-xl:   1.5rem;   /* 24 */
-  --radius-2xl:  2rem;     /* 32 */
+  /* === BORDER RADIUS (placeholder — replace when designer publishes) === */
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-2xl:  32px;
   --radius-full: 9999px;
 
-  /* === SHADOWS (warm earth tone — Bark-tinted, never pure black) === */
-  --shadow-sm: 0 1px 2px 0 color-mix(in oklab, var(--bark-950) 6%, transparent);
+  /* === SHADOWS (placeholder — Bark-tinted, replace when published) === */
+  --shadow-sm: 0 1px 2px 0 var(--black-100);
   --shadow-md:
-    0 4px 6px -1px color-mix(in oklab, var(--bark-950) 8%, transparent),
-    0 2px 4px -2px color-mix(in oklab, var(--bark-950) 4%, transparent);
+    0 4px 6px -1px var(--black-200),
+    0 2px 4px -2px var(--black-100);
   --shadow-lg:
-    0 10px 15px -3px color-mix(in oklab, var(--bark-950) 10%, transparent),
-    0 4px 6px -4px color-mix(in oklab, var(--bark-950) 4%, transparent);
+    0 10px 15px -3px var(--black-200),
+    0 4px 6px -4px var(--black-100);
   --shadow-xl:
-    0 20px 25px -5px color-mix(in oklab, var(--bark-950) 12%, transparent),
-    0 8px 10px -6px color-mix(in oklab, var(--bark-950) 5%, transparent);
+    0 20px 25px -5px var(--black-300),
+    0 8px 10px -6px var(--black-200);
 }

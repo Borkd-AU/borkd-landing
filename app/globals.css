@@ -3,142 +3,100 @@
 
 /**
  * ──────────────────────────────────────────────────────────────────────────
- * LAYER 2 — Semantic tokens
+ * LAYER 2 — Semantic tokens (1:1 mirror of Figma Semantics collection)
  *
- * These map raw primitives (Layer 1) to intent. Components consume these
- * via Tailwind utility classes (Layer 3).  Change a brand color globally
- * by re-pointing semantic tokens here — no component edits needed.
+ * Source: Borkd Design System → Variables → Semantics
+ * file: QlPbopY1tKWBPU2hvcWxix · 33 variables across 4 groups.
  *
- * Naming follows shadcn/ui convention so we can drop in shadcn primitives
- * later without churn.
+ * Naming follows Figma's <group>.<name> convention exactly (kebab-cased
+ * for CSS):  content.primary  →  --content-primary
+ *            background.brand →  --background-brand
+ *            border.accent    →  --border-accent
+ *            size.Medium      →  --size-md  (already in tokens/spacing)
+ *
+ * The Light mode is the only mode the designer has published. When Dark
+ * arrives, add a `.dark { ... }` block here re-pointing to the Dark column.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 :root {
-  /* === Page surface === */
-  --background: var(--cloud-300);
-  --foreground: var(--bark-700);
-  --surface:    var(--cloud-50);
-  --surface-elevated: #ffffff;
+  /* ─── content/* — text & icon colors ────────────────────────────── */
+  --content-primary:    var(--black-500);   /* default body text */
+  --content-brand:      var(--bark-500);    /* brand-colored text */
+  --content-contrast:   var(--white-500);   /* text on dark backgrounds */
+  --content-secondary:  var(--black-400);   /* less-emphasized text */
+  --content-tertiary:   var(--black-300);   /* meta / disabled text */
+  --content-accent:     var(--zoomies-500); /* links, brand accent text */
+  --content-positive:   var(--positive-300);
+  --content-negative:   var(--negative-300);
 
-  /* === Brand === */
-  --primary:              var(--zoomies-500);
-  --primary-foreground:   var(--cloud-50);
-  --primary-hover:        var(--zoomies-600);
+  /* ─── background/* — surface colors ─────────────────────────────── */
+  --background-primary:        var(--white-500);    /* default page surface */
+  --background-brand:           var(--cloud-500);   /* brand-tinted section */
+  --background-secondary:       var(--black-200);   /* subtle filled surface */
+  --background-tertiary:        var(--black-100);   /* hover / lighter fill */
+  --background-overlay:         var(--black-200);   /* modal scrim, dim */
+  --background-contrast:        var(--white-500);   /* on dark imagery */
+  --background-accent:          var(--zoomies-500); /* primary CTA fill */
+  --background-accent-muted:    var(--zoomies-100); /* accent badge / chip */
+  --background-positive:        var(--positive-300);
+  --background-positive-muted:  var(--positive-100);
+  --background-negative:        var(--negative-300);
+  --background-negative-muted:  var(--negative-100);
 
-  --secondary:            var(--bark-700);
-  --secondary-foreground: var(--cloud-50);
-
-  --accent:               var(--zoomies-200);
-  --accent-foreground:    var(--zoomies-950);
-
-  /* === Muted / subtle === */
-  --muted:             var(--cloud-500);
-  --muted-foreground:  var(--bark-500);
-
-  /* === Feedback (mapped from support palettes) === */
-  --success:            var(--moss-600);
-  --success-foreground: var(--cloud-50);
-  --warning:            var(--walkies-700);
-  --warning-foreground: var(--bark-950);
-  --danger:             var(--snoot-900);
-  --danger-foreground:  var(--cloud-50);
-  --info:               var(--puddle-700);
-  --info-foreground:    var(--cloud-50);
-
-  /* === Lines & focus === */
-  --border:      color-mix(in oklab, var(--bark-700) 14%, transparent);
-  --border-strong: var(--bark-200);
-  --input:       var(--cloud-500);
-  --ring:        var(--zoomies-500);
-
-  /* === Radius (default for the whole site) === */
-  --radius: var(--radius-lg);
-}
-
-.dark {
-  --background: var(--bark-900);
-  --foreground: var(--cloud-200);
-  --surface:    var(--bark-800);
-  --surface-elevated: var(--bark-700);
-
-  --primary:            var(--zoomies-400);
-  --primary-foreground: var(--bark-950);
-  --primary-hover:      var(--zoomies-300);
-
-  --secondary:            var(--cloud-300);
-  --secondary-foreground: var(--bark-900);
-
-  --accent:            var(--zoomies-800);
-  --accent-foreground: var(--zoomies-100);
-
-  --muted:            var(--bark-700);
-  --muted-foreground: var(--bark-200);
-
-  --success:            var(--moss-500);
-  --success-foreground: var(--moss-950);
-  --warning:            var(--walkies-500);
-  --warning-foreground: var(--walkies-950);
-  --danger:             var(--snoot-500);
-  --danger-foreground:  var(--snoot-950);
-  --info:               var(--puddle-500);
-  --info-foreground:    var(--puddle-950);
-
-  --border:        color-mix(in oklab, var(--cloud-300) 14%, transparent);
-  --border-strong: var(--bark-500);
-  --input:         var(--bark-700);
-  --ring:          var(--zoomies-400);
+  /* ─── border/* ──────────────────────────────────────────────────── */
+  --border-primary: var(--black-500);   /* strong outline */
+  --border-muted:   var(--black-200);   /* subtle divider */
+  --border-accent:  var(--zoomies-500); /* focused / brand outline */
 }
 
 /**
  * ──────────────────────────────────────────────────────────────────────────
  * LAYER 3 — Tailwind utility registration
  *
- * `@theme inline` exposes our semantic vars to Tailwind's utility generator.
- * --color-*  → bg-*, text-*, border-*
- * --font-*   → font-*
- * --radius-* → rounded-*
- * --spacing-* (custom) → unused; we use Tailwind's built-in scale by default
+ * `@theme inline` exposes every Layer 2 var to Tailwind's utility
+ * generator. For colors, `--color-<name>` becomes:
+ *   bg-<name>     → background-color
+ *   text-<name>   → color
+ *   border-<name> → border-color
+ *   ring-<name>   → outline ring color
+ *
+ * We expose two namespaces:
+ *   1. Semantic — preferred for components: bg-background-brand,
+ *      text-content-secondary, border-border-muted
+ *   2. Primitive scales — for occasional explicit use: bg-zoomies-500
  * ──────────────────────────────────────────────────────────────────────────
  */
 
 @theme inline {
-  /* Surface colors */
-  --color-background:        var(--background);
-  --color-foreground:        var(--foreground);
-  --color-surface:           var(--surface);
-  --color-surface-elevated:  var(--surface-elevated);
+  /* ─── Semantic colors ───────────────────────────────────────────── */
+  --color-content-primary:    var(--content-primary);
+  --color-content-brand:      var(--content-brand);
+  --color-content-contrast:   var(--content-contrast);
+  --color-content-secondary:  var(--content-secondary);
+  --color-content-tertiary:   var(--content-tertiary);
+  --color-content-accent:     var(--content-accent);
+  --color-content-positive:   var(--content-positive);
+  --color-content-negative:   var(--content-negative);
 
-  /* Brand */
-  --color-primary:              var(--primary);
-  --color-primary-foreground:   var(--primary-foreground);
-  --color-primary-hover:        var(--primary-hover);
-  --color-secondary:            var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent:               var(--accent);
-  --color-accent-foreground:    var(--accent-foreground);
+  --color-background-primary:        var(--background-primary);
+  --color-background-brand:          var(--background-brand);
+  --color-background-secondary:      var(--background-secondary);
+  --color-background-tertiary:       var(--background-tertiary);
+  --color-background-overlay:        var(--background-overlay);
+  --color-background-contrast:       var(--background-contrast);
+  --color-background-accent:         var(--background-accent);
+  --color-background-accent-muted:   var(--background-accent-muted);
+  --color-background-positive:       var(--background-positive);
+  --color-background-positive-muted: var(--background-positive-muted);
+  --color-background-negative:       var(--background-negative);
+  --color-background-negative-muted: var(--background-negative-muted);
 
-  /* Muted */
-  --color-muted:            var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-border-primary: var(--border-primary);
+  --color-border-muted:   var(--border-muted);
+  --color-border-accent:  var(--border-accent);
 
-  /* Feedback */
-  --color-success:            var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning:            var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-danger:             var(--danger);
-  --color-danger-foreground:  var(--danger-foreground);
-  --color-info:               var(--info);
-  --color-info-foreground:    var(--info-foreground);
-
-  /* Lines & focus */
-  --color-border:        var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-input:         var(--input);
-  --color-ring:          var(--ring);
-
-  /* Brand palettes — also expose raw scales so we can use bg-bark-700 etc. */
+  /* ─── Primitive scales (full Figma palettes) ───────────────────── */
   --color-cloud-50:  var(--cloud-50);
   --color-cloud-100: var(--cloud-100);
   --color-cloud-200: var(--cloud-200);
@@ -175,29 +133,17 @@
   --color-zoomies-900: var(--zoomies-900);
   --color-zoomies-950: var(--zoomies-950);
 
-  --color-puddle-50:  var(--puddle-50);
-  --color-puddle-100: var(--puddle-100);
-  --color-puddle-200: var(--puddle-200);
-  --color-puddle-300: var(--puddle-300);
-  --color-puddle-400: var(--puddle-400);
-  --color-puddle-500: var(--puddle-500);
-  --color-puddle-600: var(--puddle-600);
-  --color-puddle-700: var(--puddle-700);
-  --color-puddle-800: var(--puddle-800);
-  --color-puddle-900: var(--puddle-900);
-  --color-puddle-950: var(--puddle-950);
-
-  --color-snoot-50:  var(--snoot-50);
-  --color-snoot-100: var(--snoot-100);
-  --color-snoot-200: var(--snoot-200);
-  --color-snoot-300: var(--snoot-300);
-  --color-snoot-400: var(--snoot-400);
-  --color-snoot-500: var(--snoot-500);
-  --color-snoot-600: var(--snoot-600);
-  --color-snoot-700: var(--snoot-700);
-  --color-snoot-800: var(--snoot-800);
-  --color-snoot-900: var(--snoot-900);
-  --color-snoot-950: var(--snoot-950);
+  --color-moss-50:  var(--moss-50);
+  --color-moss-100: var(--moss-100);
+  --color-moss-200: var(--moss-200);
+  --color-moss-300: var(--moss-300);
+  --color-moss-400: var(--moss-400);
+  --color-moss-500: var(--moss-500);
+  --color-moss-600: var(--moss-600);
+  --color-moss-700: var(--moss-700);
+  --color-moss-800: var(--moss-800);
+  --color-moss-900: var(--moss-900);
+  --color-moss-950: var(--moss-950);
 
   --color-walkies-50:  var(--walkies-50);
   --color-walkies-100: var(--walkies-100);
@@ -211,44 +157,95 @@
   --color-walkies-900: var(--walkies-900);
   --color-walkies-950: var(--walkies-950);
 
-  --color-moss-50:  var(--moss-50);
-  --color-moss-100: var(--moss-100);
-  --color-moss-200: var(--moss-200);
-  --color-moss-300: var(--moss-300);
-  --color-moss-400: var(--moss-400);
-  --color-moss-500: var(--moss-500);
-  --color-moss-600: var(--moss-600);
-  --color-moss-700: var(--moss-700);
-  --color-moss-800: var(--moss-800);
-  --color-moss-900: var(--moss-900);
-  --color-moss-950: var(--moss-950);
+  --color-snoot-50:  var(--snoot-50);
+  --color-snoot-100: var(--snoot-100);
+  --color-snoot-200: var(--snoot-200);
+  --color-snoot-300: var(--snoot-300);
+  --color-snoot-400: var(--snoot-400);
+  --color-snoot-500: var(--snoot-500);
+  --color-snoot-600: var(--snoot-600);
+  --color-snoot-700: var(--snoot-700);
+  --color-snoot-800: var(--snoot-800);
+  --color-snoot-900: var(--snoot-900);
+  --color-snoot-950: var(--snoot-950);
 
-  /* Typography */
+  --color-puddle-50:  var(--puddle-50);
+  --color-puddle-100: var(--puddle-100);
+  --color-puddle-200: var(--puddle-200);
+  --color-puddle-300: var(--puddle-300);
+  --color-puddle-400: var(--puddle-400);
+  --color-puddle-500: var(--puddle-500);
+  --color-puddle-600: var(--puddle-600);
+  --color-puddle-700: var(--puddle-700);
+  --color-puddle-800: var(--puddle-800);
+  --color-puddle-900: var(--puddle-900);
+  --color-puddle-950: var(--puddle-950);
+
+  --color-black-100: var(--black-100);
+  --color-black-200: var(--black-200);
+  --color-black-300: var(--black-300);
+  --color-black-400: var(--black-400);
+  --color-black-500: var(--black-500);
+
+  --color-white-100: var(--white-100);
+  --color-white-200: var(--white-200);
+  --color-white-300: var(--white-300);
+  --color-white-400: var(--white-400);
+  --color-white-500: var(--white-500);
+
+  --color-positive-100: var(--positive-100);
+  --color-positive-200: var(--positive-200);
+  --color-positive-300: var(--positive-300);
+  --color-positive-400: var(--positive-400);
+  --color-positive-500: var(--positive-500);
+
+  --color-negative-100: var(--negative-100);
+  --color-negative-200: var(--negative-200);
+  --color-negative-300: var(--negative-300);
+  --color-negative-400: var(--negative-400);
+  --color-negative-500: var(--negative-500);
+
+  /* ─── Sizing ──────────────────────────────────────────────────────
+   * The Figma `size` scale (XXXSmall=4 → XXXXLarge=80) is published
+   * as `--size-*` in styles/tokens/spacing.css. We do NOT remap it to
+   * Tailwind's `--spacing-*` because that variable is Tailwind v4's
+   * global step multiplier — overriding it breaks p-4, gap-6, max-w-2xl,
+   * and every other default sized utility.
+   *
+   * Use the Figma scale via:
+   *   • Tailwind defaults (1 step = 4px = XXXSmall):
+   *       p-1 → 4px,  p-2 → 8px,  p-3 → 12px,  p-4 → 16px,
+   *       p-6 → 24px, p-8 → 32px, p-10 → 40px, p-12 → 48px,
+   *       p-16 → 64px, p-20 → 80px
+   *   • Or arbitrary values when you want the named token:
+   *       [padding:var(--size-md)]   [gap:var(--size-lg)]
+   *       [max-width:var(--size-4xl)] */
+
+  /* ─── Typography ───────────────────────────────────────────────── */
   --font-sans:    var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), Georgia, serif;
   --font-mono:    ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  /* Radius */
-  --radius:    var(--radius);
-  --radius-xs: var(--radius-xs);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
-  --radius-2xl: var(--radius-2xl);
+  /* ─── Radius ───────────────────────────────────────────────────── */
+  --radius-xs:   var(--radius-xs);
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+  --radius-full: var(--radius-full);
 }
 
 /* === Base body styles === */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--background-primary);
+  color: var(--content-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Use Instrument Serif for display headings via .font-display utility, or
-   target the explicit element. Keep this tiny — components opt-in. */
+/* Display family — opt-in via .font-display, or default for <em>/<i> */
 .font-display,
 em,
 i {
