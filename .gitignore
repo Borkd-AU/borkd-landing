@@ -30,8 +30,27 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ─── Environment / secrets (NEVER commit) ────────────────────────────
+# Public repo — anything matching these patterns is for local-only use.
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+*.env.development
+*.env.production
+
+# Common secret file patterns
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+credentials.*
+service-account.json
+serviceAccountKey.json
+*-credentials.json
+*-secrets.json
 
 # vercel
 .vercel
