@@ -1,0 +1,257 @@
+@import "tailwindcss";
+@import "../styles/tokens/index.css";
+
+/**
+ * ──────────────────────────────────────────────────────────────────────────
+ * LAYER 2 — Semantic tokens
+ *
+ * These map raw primitives (Layer 1) to intent. Components consume these
+ * via Tailwind utility classes (Layer 3).  Change a brand color globally
+ * by re-pointing semantic tokens here — no component edits needed.
+ *
+ * Naming follows shadcn/ui convention so we can drop in shadcn primitives
+ * later without churn.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+
+:root {
+  /* === Page surface === */
+  --background: var(--cloud-300);
+  --foreground: var(--bark-700);
+  --surface:    var(--cloud-50);
+  --surface-elevated: #ffffff;
+
+  /* === Brand === */
+  --primary:              var(--zoomies-500);
+  --primary-foreground:   var(--cloud-50);
+  --primary-hover:        var(--zoomies-600);
+
+  --secondary:            var(--bark-700);
+  --secondary-foreground: var(--cloud-50);
+
+  --accent:               var(--zoomies-200);
+  --accent-foreground:    var(--zoomies-950);
+
+  /* === Muted / subtle === */
+  --muted:             var(--cloud-500);
+  --muted-foreground:  var(--bark-500);
+
+  /* === Feedback (mapped from support palettes) === */
+  --success:            var(--moss-600);
+  --success-foreground: var(--cloud-50);
+  --warning:            var(--walkies-700);
+  --warning-foreground: var(--bark-950);
+  --danger:             var(--snoot-900);
+  --danger-foreground:  var(--cloud-50);
+  --info:               var(--puddle-700);
+  --info-foreground:    var(--cloud-50);
+
+  /* === Lines & focus === */
+  --border:      color-mix(in oklab, var(--bark-700) 14%, transparent);
+  --border-strong: var(--bark-200);
+  --input:       var(--cloud-500);
+  --ring:        var(--zoomies-500);
+
+  /* === Radius (default for the whole site) === */
+  --radius: var(--radius-lg);
+}
+
+.dark {
+  --background: var(--bark-900);
+  --foreground: var(--cloud-200);
+  --surface:    var(--bark-800);
+  --surface-elevated: var(--bark-700);
+
+  --primary:            var(--zoomies-400);
+  --primary-foreground: var(--bark-950);
+  --primary-hover:      var(--zoomies-300);
+
+  --secondary:            var(--cloud-300);
+  --secondary-foreground: var(--bark-900);
+
+  --accent:            var(--zoomies-800);
+  --accent-foreground: var(--zoomies-100);
+
+  --muted:            var(--bark-700);
+  --muted-foreground: var(--bark-200);
+
+  --success:            var(--moss-500);
+  --success-foreground: var(--moss-950);
+  --warning:            var(--walkies-500);
+  --warning-foreground: var(--walkies-950);
+  --danger:             var(--snoot-500);
+  --danger-foreground:  var(--snoot-950);
+  --info:               var(--puddle-500);
+  --info-foreground:    var(--puddle-950);
+
+  --border:        color-mix(in oklab, var(--cloud-300) 14%, transparent);
+  --border-strong: var(--bark-500);
+  --input:         var(--bark-700);
+  --ring:          var(--zoomies-400);
+}
+
+/**
+ * ──────────────────────────────────────────────────────────────────────────
+ * LAYER 3 — Tailwind utility registration
+ *
+ * `@theme inline` exposes our semantic vars to Tailwind's utility generator.
+ * --color-*  → bg-*, text-*, border-*
+ * --font-*   → font-*
+ * --radius-* → rounded-*
+ * --spacing-* (custom) → unused; we use Tailwind's built-in scale by default
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+
+@theme inline {
+  /* Surface colors */
+  --color-background:        var(--background);
+  --color-foreground:        var(--foreground);
+  --color-surface:           var(--surface);
+  --color-surface-elevated:  var(--surface-elevated);
+
+  /* Brand */
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-primary-hover:        var(--primary-hover);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+
+  /* Muted */
+  --color-muted:            var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Feedback */
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger:             var(--danger);
+  --color-danger-foreground:  var(--danger-foreground);
+  --color-info:               var(--info);
+  --color-info-foreground:    var(--info-foreground);
+
+  /* Lines & focus */
+  --color-border:        var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input:         var(--input);
+  --color-ring:          var(--ring);
+
+  /* Brand palettes — also expose raw scales so we can use bg-bark-700 etc. */
+  --color-cloud-50:  var(--cloud-50);
+  --color-cloud-100: var(--cloud-100);
+  --color-cloud-200: var(--cloud-200);
+  --color-cloud-300: var(--cloud-300);
+  --color-cloud-400: var(--cloud-400);
+  --color-cloud-500: var(--cloud-500);
+  --color-cloud-600: var(--cloud-600);
+  --color-cloud-700: var(--cloud-700);
+  --color-cloud-800: var(--cloud-800);
+  --color-cloud-900: var(--cloud-900);
+  --color-cloud-950: var(--cloud-950);
+
+  --color-bark-50:  var(--bark-50);
+  --color-bark-100: var(--bark-100);
+  --color-bark-200: var(--bark-200);
+  --color-bark-300: var(--bark-300);
+  --color-bark-400: var(--bark-400);
+  --color-bark-500: var(--bark-500);
+  --color-bark-600: var(--bark-600);
+  --color-bark-700: var(--bark-700);
+  --color-bark-800: var(--bark-800);
+  --color-bark-900: var(--bark-900);
+  --color-bark-950: var(--bark-950);
+
+  --color-zoomies-50:  var(--zoomies-50);
+  --color-zoomies-100: var(--zoomies-100);
+  --color-zoomies-200: var(--zoomies-200);
+  --color-zoomies-300: var(--zoomies-300);
+  --color-zoomies-400: var(--zoomies-400);
+  --color-zoomies-500: var(--zoomies-500);
+  --color-zoomies-600: var(--zoomies-600);
+  --color-zoomies-700: var(--zoomies-700);
+  --color-zoomies-800: var(--zoomies-800);
+  --color-zoomies-900: var(--zoomies-900);
+  --color-zoomies-950: var(--zoomies-950);
+
+  --color-puddle-50:  var(--puddle-50);
+  --color-puddle-100: var(--puddle-100);
+  --color-puddle-200: var(--puddle-200);
+  --color-puddle-300: var(--puddle-300);
+  --color-puddle-400: var(--puddle-400);
+  --color-puddle-500: var(--puddle-500);
+  --color-puddle-600: var(--puddle-600);
+  --color-puddle-700: var(--puddle-700);
+  --color-puddle-800: var(--puddle-800);
+  --color-puddle-900: var(--puddle-900);
+  --color-puddle-950: var(--puddle-950);
+
+  --color-snoot-50:  var(--snoot-50);
+  --color-snoot-100: var(--snoot-100);
+  --color-snoot-200: var(--snoot-200);
+  --color-snoot-300: var(--snoot-300);
+  --color-snoot-400: var(--snoot-400);
+  --color-snoot-500: var(--snoot-500);
+  --color-snoot-600: var(--snoot-600);
+  --color-snoot-700: var(--snoot-700);
+  --color-snoot-800: var(--snoot-800);
+  --color-snoot-900: var(--snoot-900);
+  --color-snoot-950: var(--snoot-950);
+
+  --color-walkies-50:  var(--walkies-50);
+  --color-walkies-100: var(--walkies-100);
+  --color-walkies-200: var(--walkies-200);
+  --color-walkies-300: var(--walkies-300);
+  --color-walkies-400: var(--walkies-400);
+  --color-walkies-500: var(--walkies-500);
+  --color-walkies-600: var(--walkies-600);
+  --color-walkies-700: var(--walkies-700);
+  --color-walkies-800: var(--walkies-800);
+  --color-walkies-900: var(--walkies-900);
+  --color-walkies-950: var(--walkies-950);
+
+  --color-moss-50:  var(--moss-50);
+  --color-moss-100: var(--moss-100);
+  --color-moss-200: var(--moss-200);
+  --color-moss-300: var(--moss-300);
+  --color-moss-400: var(--moss-400);
+  --color-moss-500: var(--moss-500);
+  --color-moss-600: var(--moss-600);
+  --color-moss-700: var(--moss-700);
+  --color-moss-800: var(--moss-800);
+  --color-moss-900: var(--moss-900);
+  --color-moss-950: var(--moss-950);
+
+  /* Typography */
+  --font-sans:    var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), Georgia, serif;
+  --font-mono:    ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* Radius */
+  --radius:    var(--radius);
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+}
+
+/* === Base body styles === */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Use Instrument Serif for display headings via .font-display utility, or
+   target the explicit element. Keep this tiny — components opt-in. */
+.font-display,
+em,
+i {
+  font-family: var(--font-display);
+  font-style: italic;
+}

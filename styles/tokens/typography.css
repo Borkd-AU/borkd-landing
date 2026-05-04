@@ -1,0 +1,45 @@
+/**
+ * Layer 1 — Typography primitives
+ * Source: Borkd Brand Guidelines slide 15 — "Two typefaces, perfectly paired."
+ *
+ * Body family: DM Sans (clean, geometric, always readable)
+ * Display family: Instrument Serif (character, contrast, playful confidence)
+ *
+ * The CSS variables --font-body and --font-display are injected by next/font
+ * in app/layout.tsx. The --text-* scale below is the typographic ramp.
+ */
+
+:root {
+  /* === FONT SIZE SCALE === */
+  --text-xs:    0.75rem;   /* 12 */
+  --text-sm:    0.875rem;  /* 14 */
+  --text-base:  1rem;      /* 16 */
+  --text-lg:    1.125rem;  /* 18 */
+  --text-xl:    1.25rem;   /* 20 */
+  --text-2xl:   1.5rem;    /* 24 */
+  --text-3xl:   1.875rem;  /* 30 */
+  --text-4xl:   2.25rem;   /* 36 */
+  --text-5xl:   3rem;      /* 48 */
+  --text-6xl:   3.75rem;   /* 60 */
+  --text-7xl:   4.5rem;    /* 72 */
+  --text-8xl:   6rem;      /* 96 */
+
+  /* === LINE HEIGHTS === */
+  --leading-tight:   1.1;
+  --leading-snug:    1.25;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.65;
+
+  /* === LETTER SPACING === */
+  --tracking-tighter: -0.04em;  /* large display */
+  --tracking-tight:   -0.02em;  /* headings */
+  --tracking-normal:  0;
+  --tracking-wide:    0.02em;
+  --tracking-wider:   0.06em;   /* small caps overlines */
+
+  /* === FONT WEIGHTS === */
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+}

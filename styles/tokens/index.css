@@ -1,0 +1,10 @@
+/**
+ * Layer 1 — Token primitives index
+ *
+ * Single import point for all raw design tokens.
+ * Edit any of the imported files and the change cascades to every component.
+ */
+
+@import "./colors.css";
+@import "./typography.css";
+@import "./spacing.css";
