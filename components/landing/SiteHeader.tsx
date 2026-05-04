@@ -8,7 +8,23 @@ import Image from "next/image";
  *
  *   SiteHeader        — Figma node 134:5659 (sky + field, man + jojo)
  *   SiteHeaderAlt     — Figma node 157:271  (autumn forest, girl + retriever)
+ *
+ * The top bar (logo + nav + Download CTA) is rendered separately as
+ * `FloatingTopBar` so it stays pinned to the top of the viewport on
+ * scroll instead of disappearing with the hero.
  */
+
+export function FloatingTopBar() {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-6 pt-6 sm:px-12 sm:pt-10">
+      <div className="pointer-events-auto mx-auto flex max-w-[1440px] items-center justify-between gap-4">
+        <Logo />
+        <NavPill className="hidden md:flex" />
+        <DownloadCta />
+      </div>
+    </div>
+  );
+}
 
 export function SiteHeader() {
   // Figma "Website / header image" (134:5659).
@@ -40,16 +56,7 @@ export function SiteHeader() {
           className="absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-b from-transparent to-background-brand"
         />
 
-        {/* top bar */}
-        <div className="absolute inset-x-0 top-0 z-20 px-6 pt-6 sm:px-12 sm:pt-10">
-          <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
-            <Logo />
-            <NavPill className="hidden md:flex" />
-            <DownloadCta />
-          </div>
-        </div>
-
-        {/* headline (centered) */}
+{/* headline (centered) */}
         <div className="absolute inset-x-0 top-[14%] z-10 flex justify-center px-6">
           <h1
             className="max-w-[978px] text-center text-[32px] leading-tight tracking-tight text-bark-600 sm:text-[48px] md:text-[60px] lg:text-[67px]"
@@ -116,16 +123,7 @@ export function SiteHeaderAlt() {
           className="absolute inset-x-0 bottom-0 h-[15%] bg-gradient-to-b from-transparent to-background-brand"
         />
 
-        {/* top bar */}
-        <div className="absolute inset-x-0 top-0 z-20 px-6 pt-6 sm:px-12 sm:pt-10">
-          <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
-            <Logo />
-            <NavPill className="hidden md:flex" />
-            <DownloadCta />
-          </div>
-        </div>
-
-        {/* golden retriever, Figma footprint left=686/1440=47.6%,
+{/* golden retriever, Figma footprint left=686/1440=47.6%,
             bottom=(859-603-191)/859=7.6%, w=227/1440=15.8%. Anchored
             from the bottom so it never clips on short viewports. */}
         <div className="absolute left-[47.6%] bottom-[7.6%] z-10 w-[15.8%]">
