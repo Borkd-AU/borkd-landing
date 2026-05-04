@@ -12,7 +12,7 @@ export function QuoteSection() {
     >
       <div className="mx-auto flex max-w-[1205px] flex-col items-center gap-12 md:flex-row md:gap-[80px]">
         {/* Instagram post composite */}
-        <div className="relative aspect-[516/833] w-full max-w-[516px] overflow-hidden rounded-2xl bg-cloud-500">
+        <div className="relative aspect-[516/833] w-full max-w-[516px] shrink-0 overflow-hidden rounded-2xl bg-cloud-500">
           <Image
             src="/images/instagram-post.png"
             alt=""
@@ -20,13 +20,16 @@ export function QuoteSection() {
             sizes="(max-width: 768px) 100vw, 516px"
             className="object-cover"
           />
-          <Image
-            src="/images/girl-at-cafe.png"
-            alt="A woman at a café with her dog"
-            width={297}
-            height={315}
-            className="absolute bottom-[8%] left-[10%] h-auto w-[60%] max-w-[297px]"
-          />
+          <div className="absolute bottom-[5%] left-[8%] w-[58%]">
+            <Image
+              src="/images/girl-at-cafe.png"
+              alt="A woman at a café with her dog"
+              width={297}
+              height={315}
+              sizes="(max-width: 768px) 50vw, 297px"
+              className="h-auto w-full"
+            />
+          </div>
         </div>
 
         {/* Quote + body */}
