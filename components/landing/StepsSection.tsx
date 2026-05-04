@@ -29,11 +29,11 @@ const steps = [
 /**
  * Section 3 — Horizontal-scroll storytelling.
  *
- * Behaviour matches the Figma annotations:
+ * Behaviour:
  *   1. As the section enters the viewport, the headline slides in from
- *      left to right and locks at its final position.
- *   2. With the section pinned, the 3-step track scrolls horizontally as
- *      the user continues scrolling vertically.
+ *      RIGHT to left and locks at its final position.
+ *   2. With the section pinned, the 3-step track also slides in from the
+ *      right as the user continues scrolling vertically.
  *
  * On touch devices we fall back to a CSS scroll-snap track so users can
  * swipe through steps naturally instead of hijacking the page scroll.
@@ -69,9 +69,10 @@ export function StepsSection() {
       const overflow = () =>
         Math.max(0, track.scrollWidth - stage.clientWidth);
 
-      // Initial state — headline off-screen left, track at origin.
-      gsap.set(headline, { xPercent: -110, opacity: 0 });
-      gsap.set(track, { x: 0 });
+      // Initial state — headline off-screen RIGHT, track parked off-screen
+      // right so cards enter from the right edge of the stage.
+      gsap.set(headline, { xPercent: 110, opacity: 0 });
+      gsap.set(track, { x: () => stage.clientWidth });
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -91,6 +92,9 @@ export function StepsSection() {
         ease: "power2.out",
         duration: 1,
       });
+      // Slide the whole track in from the right, then continue panning
+      // left until the last card is fully visible at the stage's right
+      // edge — i.e. final x = -overflow().
       tl.to(
         track,
         { x: () => -overflow(), ease: "none", duration: 2 },

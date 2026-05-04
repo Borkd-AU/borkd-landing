@@ -237,6 +237,20 @@
 }
 
 /* === Base body styles === */
+html {
+  /* Native smooth scrolling for in-page anchor jumps. Disabled when the
+     user prefers reduced motion. ScrollTrigger uses programmatic scroll
+     positioning that ignores this property, so the pinned steps section
+     keeps its frame-by-frame scrub. */
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   background: var(--background-primary);
   color: var(--content-primary);
