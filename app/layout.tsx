@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -40,6 +41,7 @@ export default function RootLayout({
       className={`${dmSans.variable} ${instrumentSerif.variable} antialiased`}
     >
       <body className="bg-background-primary text-content-primary font-sans">
+        <SmoothScroll />
         {children}
       </body>
     </html>
