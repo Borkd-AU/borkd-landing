@@ -32,8 +32,10 @@ const steps = [
  * Behaviour (every viewport, including mobile):
  *   1. As the section enters the viewport, the headline slides in from
  *      RIGHT to left and locks at its final position.
- *   2. With the section pinned, the 3-step track also slides in from the
- *      right as the user continues scrolling vertically.
+ *   2. With the section pinned, the 3-step track slides in from the
+ *      right and snaps each step to the centre of the stage in turn:
+ *      Step 1 → Step 2 → Step 3 are each held at the centre before the
+ *      next one comes through.
  *
  * Users with `prefers-reduced-motion: reduce` see a static swipe-able
  * track without any pinning or scroll-driven animation.
@@ -61,17 +63,45 @@ export function StepsSection() {
         return;
       }
 
-      // How far the track needs to slide so its right edge aligns with
-      // the stage's right edge. Recomputed on every refresh so font and
-      // image loads can adjust the pin distance without rebuilding.
-      const overflow = () =>
-        Math.max(0, track.scrollWidth - stage.clientWidth);
+      // Returns the track x-translation required to centre the n-th
+      // card (0-indexed) inside the stage. Measurements use the
+      // untransformed offset* properties so any GSAP transform already
+      // applied to the track doesn't affect the calculation.
+      //
+      //   stageVisualCentre  = midpoint of stage box, viewport-x
+      //   trackOriginX       = track's left edge when no transform,
+      //                        viewport-x — this equals stage's left
+      //                        plus its left padding
+      //   cardCentreInTrack  = card.offsetLeft + card.offsetWidth/2
+      //                        (relative to track's content box)
+      //
+      //   final card centre = trackOriginX + cardCentreInTrack + x
+      //   solving for x to land at stageVisualCentre:
+      //     x = stageVisualCentre - trackOriginX - cardCentreInTrack
+      const cardCount = track.children.length;
+      const centerXFor = (n: number) => {
+        const card = track.children[n] as HTMLElement | undefined;
+        if (!card) return 0;
+        const stageRect = stage.getBoundingClientRect();
+        const stageVisualCentre = stageRect.left + stageRect.width / 2;
+        const trackRect = track.getBoundingClientRect();
+        // Compensate for the transform currently on the track so we
+        // recover the untransformed origin x.
+        const currentX = gsap.getProperty(track, "x") as number;
+        const trackOriginX = trackRect.left - currentX;
+        const cardCentreInTrack =
+          card.offsetLeft + card.offsetWidth / 2;
+        return stageVisualCentre - trackOriginX - cardCentreInTrack;
+      };
 
+      // Total scroll distance: one screenful for the headline + one
+      // screenful per card (so each card has time to rest at centre).
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: () => `+=${overflow() + window.innerHeight}`,
+          end: () =>
+            `+=${window.innerHeight + cardCount * window.innerHeight}`,
           pin: true,
           scrub: 0.6,
           anticipatePin: 1,
@@ -79,20 +109,29 @@ export function StepsSection() {
         },
       });
 
-      // Headline: slide in from the RIGHT edge of the stage.
+      // 1. Headline slides in from the right.
       tl.fromTo(
         headline,
         { xPercent: 110, opacity: 0 },
         { xPercent: 0, opacity: 1, ease: "power2.out", duration: 1 }
       );
-      // Track: enter from the right, then pan left until the last card
-      // is fully visible at the stage's right edge — i.e. final x = -overflow().
+
+      // 2. Track enters from the right, parked just off the stage's
+      //    right edge, then pans through each card to the centre.
       tl.fromTo(
         track,
         { x: () => stage.clientWidth },
-        { x: () => -overflow(), ease: "none", duration: 2 },
+        { x: () => centerXFor(0), ease: "power2.out", duration: 1.2 },
         ">"
       );
+      // 3. Pan to each subsequent card in turn.
+      for (let i = 1; i < cardCount; i++) {
+        tl.to(
+          track,
+          { x: () => centerXFor(i), ease: "power1.inOut", duration: 1 },
+          ">"
+        );
+      }
 
       // Refresh once layout is final so the pin distance is accurate.
       ScrollTrigger.refresh();
