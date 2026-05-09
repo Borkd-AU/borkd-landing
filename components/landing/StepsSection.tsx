@@ -1,12 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useGSAP } from "@gsap/react";
-import { StepCard } from "./StepCard";
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap";
+import { StepCard, STEP_CARD_WIDTH_CLASSES } from "./StepCard";
 
 const steps = [
   {
@@ -29,22 +25,40 @@ const steps = [
 /**
  * Section 3 — Horizontal-scroll storytelling.
  *
- * Behaviour (every viewport, including mobile):
- *   1. As the section enters the viewport, the headline slides in from
- *      RIGHT to left and locks at its final position.
- *   2. With the section pinned, the 3-step track slides in from the
- *      right and snaps each step to the centre of the stage in turn:
- *      Step 1 → Step 2 → Step 3 are each held at the centre before the
- *      next one comes through.
+ * Layout:
+ *   stage (h-screen, pinned)
+ *     headline (left-aligned, slides in)
+ *     focus viewport (one card wide, overflow-hidden)
+ *       track (flex row of cards) ← x animated by GSAP
  *
- * Users with `prefers-reduced-motion: reduce` see a static swipe-able
- * track without any pinning or scroll-driven animation.
+ * The focus viewport is exactly one card wide, so when the track
+ * left-aligns a card to it, the previous and next cards are visually
+ * masked off. That is the "one beat at a time" feel — you only see
+ * the active step.
+ *
+ * Scroll choreography (each "unit" = one viewport of pinned scroll):
+ *   0.0 → 0.5  Headline fade + slide-in
+ *   0.5 → 1.0  Track enters from off-right, lands Step 1
+ *   1.0 → 1.3  Hold on Step 1
+ *   1.3 → 1.6  Pan to Step 2
+ *   1.6 → 1.9  Hold on Step 2
+ *   1.9 → 2.2  Pan to Step 3
+ *   2.2 → 2.5  Hold on Step 3 (so unpin happens with Step 3 settled)
+ *
+ * Total pin distance = 2.5 viewports.
+ *
+ * ScrollTrigger snap pulls the user to the nearest "step settled"
+ * label when scrolling stops, so a slow flick lands cleanly on a
+ * beat instead of mid-pan.
+ *
+ * Reduced-motion users skip the whole interaction.
  */
 export function StepsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const focusRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
@@ -52,9 +66,9 @@ export function StepsSection() {
       const headline = headlineRef.current;
       const track = trackRef.current;
       const stage = stageRef.current;
-      if (!section || !headline || !track || !stage) return;
+      const focus = focusRef.current;
+      if (!section || !headline || !track || !stage || !focus) return;
 
-      // Reduced-motion users get the static fallback track.
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
@@ -63,78 +77,89 @@ export function StepsSection() {
         return;
       }
 
-      // Returns the track x-translation required to centre the n-th
-      // card (0-indexed) inside the stage. Measurements use the
-      // untransformed offset* properties so any GSAP transform already
-      // applied to the track doesn't affect the calculation.
-      //
-      //   stageVisualCentre  = midpoint of stage box, viewport-x
-      //   trackOriginX       = track's left edge when no transform,
-      //                        viewport-x — this equals stage's left
-      //                        plus its left padding
-      //   cardCentreInTrack  = card.offsetLeft + card.offsetWidth/2
-      //                        (relative to track's content box)
-      //
-      //   final card centre = trackOriginX + cardCentreInTrack + x
-      //   solving for x to land at stageVisualCentre:
-      //     x = stageVisualCentre - trackOriginX - cardCentreInTrack
-      const cardCount = track.children.length;
-      const centerXFor = (n: number) => {
+      // Card N's left edge in track-local coordinates. To align card
+      // N inside the focus viewport, translate the track by
+      // -card.offsetLeft.
+      const cardX = (n: number) => {
         const card = track.children[n] as HTMLElement | undefined;
-        if (!card) return 0;
-        const stageRect = stage.getBoundingClientRect();
-        const stageVisualCentre = stageRect.left + stageRect.width / 2;
-        const trackRect = track.getBoundingClientRect();
-        // Compensate for the transform currently on the track so we
-        // recover the untransformed origin x.
-        const currentX = gsap.getProperty(track, "x") as number;
-        const trackOriginX = trackRect.left - currentX;
-        const cardCentreInTrack =
-          card.offsetLeft + card.offsetWidth / 2;
-        return stageVisualCentre - trackOriginX - cardCentreInTrack;
+        return card ? -card.offsetLeft : 0;
       };
 
-      // Total scroll distance: one screenful for the headline + one
-      // screenful per card (so each card has time to rest at centre).
+      // Track's off-stage starting position — first card is parked
+      // just past the right edge of the focus viewport.
+      const trackEntryX = () => focus.clientWidth;
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: () =>
-            `+=${window.innerHeight + cardCount * window.innerHeight}`,
+          end: () => `+=${window.innerHeight * 2.5}`,
           pin: true,
-          scrub: 0.6,
+          // Tight scrub — gsap.com-style "almost direct, just smoothed."
+          // ScrollSmoother is already smoothing the wheel input, so we
+          // keep this minimal to avoid double-easing.
+          scrub: 0.1,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          snap: {
+            // labelsDirectional only snaps in the direction the user
+            // is already scrolling — so a slow flick forward never
+            // pulls them back to the previous step.
+            snapTo: "labelsDirectional",
+            duration: { min: 0.2, max: 0.5 },
+            delay: 0.05,
+            ease: "power2.inOut",
+          },
         },
       });
 
-      // 1. Headline slides in from the right.
+      // 0.0 → 0.5 — Headline reveal.
       tl.fromTo(
         headline,
-        { xPercent: 110, opacity: 0 },
-        { xPercent: 0, opacity: 1, ease: "power2.out", duration: 1 }
+        { xPercent: 30, opacity: 0 },
+        { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.5 }
       );
 
-      // 2. Track enters from the right, parked just off the stage's
-      //    right edge, then pans through each card to the centre.
+      // 0.5 → 1.0 — Track enters and lands Step 1.
       tl.fromTo(
         track,
-        { x: () => stage.clientWidth },
-        { x: () => centerXFor(0), ease: "power2.out", duration: 1.2 },
-        ">"
+        { x: trackEntryX },
+        { x: () => cardX(0), ease: "power2.out", duration: 0.5 }
       );
-      // 3. Pan to each subsequent card in turn.
-      for (let i = 1; i < cardCount; i++) {
-        tl.to(
-          track,
-          { x: () => centerXFor(i), ease: "power1.inOut", duration: 1 },
-          ">"
-        );
-      }
 
-      // Refresh once layout is final so the pin distance is accurate.
-      ScrollTrigger.refresh();
+      // 1.0 — Step 1 settled. Snap target.
+      tl.addLabel("step-1");
+
+      // 1.0 → 1.3 — Hold Step 1.
+      tl.to({}, { duration: 0.3 });
+
+      // 1.3 → 1.6 — Pan to Step 2.
+      tl.to(track, {
+        x: () => cardX(1),
+        ease: "power2.inOut",
+        duration: 0.3,
+      });
+
+      // 1.6 — Step 2 settled.
+      tl.addLabel("step-2");
+
+      // 1.6 → 1.9 — Hold Step 2.
+      tl.to({}, { duration: 0.3 });
+
+      // 1.9 → 2.2 — Pan to Step 3.
+      tl.to(track, {
+        x: () => cardX(2),
+        ease: "power2.inOut",
+        duration: 0.3,
+      });
+
+      // 2.2 — Step 3 settled.
+      tl.addLabel("step-3");
+
+      // 2.2 → 2.5 — Final hold so unpin happens with Step 3 settled.
+      tl.to({}, { duration: 0.3 });
+
+      // Recompute once fonts settle in case card widths shift.
       document.fonts?.ready.then(() => ScrollTrigger.refresh());
     },
     { scope: sectionRef }
@@ -148,7 +173,7 @@ export function StepsSection() {
     >
       <div
         ref={stageRef}
-        className="relative mx-auto flex h-screen max-w-[1440px] flex-col justify-center gap-10 overflow-hidden px-6 sm:gap-12 sm:px-12 lg:gap-20 lg:px-[235px]"
+        className="relative mx-auto flex h-screen max-w-[1440px] flex-col justify-center gap-10 px-6 sm:gap-12 sm:px-12 lg:gap-20 lg:px-[235px]"
       >
         <h2
           ref={headlineRef}
@@ -161,13 +186,22 @@ export function StepsSection() {
           </em>
         </h2>
 
+        {/* Focus viewport — exactly one card wide, clipped. The track
+            slides through it, so only the active card is visible. The
+            width classes are imported from StepCard so the mask and
+            card always stay in sync. */}
         <div
-          ref={trackRef}
-          className="flex gap-6 will-change-transform sm:gap-12 lg:gap-[80px]"
+          ref={focusRef}
+          className={`overflow-hidden ${STEP_CARD_WIDTH_CLASSES}`}
         >
-          {steps.map((s) => (
-            <StepCard key={s.number} {...s} />
-          ))}
+          <div
+            ref={trackRef}
+            className="flex gap-6 will-change-transform sm:gap-12 lg:gap-[80px]"
+          >
+            {steps.map((s) => (
+              <StepCard key={s.number} {...s} />
+            ))}
+          </div>
         </div>
       </div>
     </section>

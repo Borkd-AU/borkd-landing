@@ -1,8 +1,13 @@
 /**
  * Reusable step card used inside StepsSection's horizontal track.
- * Width is fixed at the Figma value (753px) on desktop so all three cards
- * line up in a single 2420px-wide row that GSAP scrolls horizontally.
+ *
+ * Card width is the single source of truth for the focus viewport
+ * mask in StepsSection — exported as `STEP_CARD_WIDTH_CLASSES` so the
+ * mask and card never drift apart.
  */
+export const STEP_CARD_WIDTH_CLASSES =
+  "w-[82vw] max-w-[753px] sm:w-[60vw] lg:w-[753px]";
+
 export function StepCard({
   number,
   title,
@@ -13,7 +18,9 @@ export function StepCard({
   body: string;
 }) {
   return (
-    <div className="flex w-[82vw] max-w-[753px] shrink-0 flex-col gap-4 sm:w-[60vw] lg:w-[753px]">
+    <div
+      className={`flex shrink-0 flex-col gap-4 ${STEP_CARD_WIDTH_CLASSES}`}
+    >
       <span className="inline-flex w-fit items-center justify-center rounded-full bg-background-accent px-4 py-1">
         <span className="font-display text-[20px] tracking-tight text-content-contrast sm:text-[22px]">
           Step {number}
