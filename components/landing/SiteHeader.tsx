@@ -91,7 +91,8 @@ export function SiteHeader() {
 
 export function SiteHeaderAlt() {
   // Figma "Website / header image - alternative" (157:271).
-  //   Layer 1: header-bg-alt.jpg (autumn forest, 2880×1920 landscape)
+  //   Layer 1: header-bg-alt.png (autumn forest, 1440×859 — Steph's
+  //            colour-graded export from Figma, layer download)
   //   Layer 2: HTML controls (logo, nav pill, CTA)
   //   Layer 3: headline + store buttons (left-aligned, white)
   //   Layer 4: golden-retriever.svg (centre-bottom)
@@ -106,19 +107,16 @@ export function SiteHeaderAlt() {
   return (
     <header className="relative isolate w-full overflow-hidden bg-background-brand">
       <div className="relative mx-auto h-[100svh] min-h-[640px] w-full lg:h-auto lg:min-h-0 lg:max-h-[100svh] lg:[aspect-ratio:1440/859]">
-        {/* 2880×1920 native landscape, cover crops to fit. */}
+        {/* 1440×859 native landscape (Steph's graded export), cover
+            crops to fit. */}
         <Image
-          src="/images/header-bg-alt.jpg"
+          src="/images/header-bg-alt.png"
           alt=""
           fill
           priority
           sizes="100vw"
           quality={90}
           className="object-cover object-center"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-[20%] bg-gradient-to-b from-transparent to-background-brand lg:h-[15%]"
         />
 
         {/* Golden retriever.
