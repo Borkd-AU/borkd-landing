@@ -20,12 +20,20 @@ export function FloatingTopBar() {
     <div className="pointer-events-none fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-12 sm:pt-10">
       <div className="pointer-events-auto mx-auto flex max-w-[1440px] items-center justify-between gap-3 sm:gap-4">
         <Logo />
+        <NavMenuMobile className="md:hidden" />
         <NavPill className="hidden md:flex" />
         <DownloadCta />
       </div>
     </div>
   );
 }
+
+const navItems: Array<{ label: string; href: string; external?: boolean }> = [
+  { label: "home", href: "/" },
+  { label: "about", href: "/about" },
+  { label: "for venues", href: "/for-venues" },
+  { label: "contact", href: "mailto:info@borkd.app", external: true },
+];
 
 export function SiteHeader() {
   // Figma "Website / header image" (134:5659).
@@ -219,19 +227,13 @@ function Logo() {
 }
 
 function NavPill({ className = "" }: { className?: string }) {
-  const items: Array<{ label: string; href: string; external?: boolean }> = [
-    { label: "home", href: "/" },
-    { label: "about", href: "/about" },
-    { label: "for venues", href: "/for-venues" },
-    { label: "contact", href: "mailto:info@borkd.app", external: true },
-  ];
   return (
     <nav
       aria-label="Primary"
       className={`items-center rounded-full bg-black/30 px-6 py-3 backdrop-blur-sm ${className}`}
     >
       <ul className="flex items-center gap-6 text-[18px] tracking-tight text-white">
-        {items.map(({ label, href, external }) =>
+        {navItems.map(({ label, href, external }) =>
           external ? (
             <li key={label}>
               <a
@@ -254,6 +256,82 @@ function NavPill({ className = "" }: { className?: string }) {
         )}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * Mobile hamburger menu. Uses native <details>/<summary> so the toggle
+ * works without converting this file to a client component for one
+ * piece of trivial state. The panel is absolute-positioned so opening
+ * it doesn't shift the layout. Closes naturally when the user taps a
+ * link (because the navigation re-renders the page).
+ */
+function NavMenuMobile({ className = "" }: { className?: string }) {
+  return (
+    <details className={`group relative ${className}`}>
+      <summary
+        aria-label="Open menu"
+        className="grid h-[44px] w-[44px] cursor-pointer list-none place-items-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm transition-opacity hover:opacity-90 [&::-webkit-details-marker]:hidden"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+          className="group-open:hidden"
+        >
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+        <svg
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          aria-hidden="true"
+          className="hidden group-open:block"
+        >
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      </summary>
+      <nav
+        aria-label="Primary"
+        className="absolute left-1/2 top-full mt-2 min-w-[200px] -translate-x-1/2 rounded-2xl bg-black/85 p-3 shadow-lg backdrop-blur-md"
+      >
+        <ul className="flex flex-col gap-1 text-[16px] tracking-tight text-white">
+          {navItems.map(({ label, href, external }) =>
+            external ? (
+              <li key={label}>
+                <a
+                  href={href}
+                  className="block rounded-md px-3 py-2 transition-colors hover:bg-white/10"
+                >
+                  {label}
+                </a>
+              </li>
+            ) : (
+              <li key={label}>
+                <Link
+                  href={href}
+                  className="block rounded-md px-3 py-2 transition-colors hover:bg-white/10"
+                >
+                  {label}
+                </Link>
+              </li>
+            )
+          )}
+        </ul>
+      </nav>
+    </details>
   );
 }
 
