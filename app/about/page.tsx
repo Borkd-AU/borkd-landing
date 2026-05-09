@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { FloatingTopBar } from "@/components/landing/SiteHeader";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <FloatingTopBar />
       <main className="bg-background-brand text-content-primary">
         <div className="mx-auto w-full max-w-[820px] px-6 pb-16 pt-32 sm:px-8 sm:pt-40 lg:pb-24">
           <article className="space-y-12">
@@ -109,26 +107,16 @@ export default function AboutPage() {
               <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
                 Who&rsquo;s building it
               </h2>
-              <ul className="list-disc space-y-2 pl-6 text-base leading-relaxed sm:text-lg">
-                <li>
-                  <strong className="font-semibold">Joon</strong> and{" "}
-                  <strong className="font-semibold">Roy</strong> — co-founders,
-                  dog people, the ones who got tired enough of the status quo
-                  to do something about it.
-                </li>
-                <li>
-                  <strong className="font-semibold">Steph</strong> — design
-                  and brand. Why Borkd doesn&rsquo;t look like every other dog
-                  app.
-                </li>
-                <li>
-                  <strong className="font-semibold">Ryan</strong> — the
-                  engineer keeping it all standing up.
-                </li>
-              </ul>
               <p className="text-base leading-relaxed sm:text-lg">
-                And the dogs whose habits, quirks, and walks ended up shaping
-                every decision we made.
+                A small Sydney team — designers, engineers, founders. Dog
+                people first, builders second. We started Borkd because the
+                version we wanted to use didn&rsquo;t exist, and the dogs in
+                our lives weren&rsquo;t getting any younger.
+              </p>
+              <p className="text-base leading-relaxed sm:text-lg">
+                Every habit, every quirk, every walk where the spot
+                didn&rsquo;t quite work out — they shaped every decision we
+                made along the way.
               </p>
             </section>
 

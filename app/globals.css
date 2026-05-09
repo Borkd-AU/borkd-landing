@@ -247,7 +247,12 @@ html {
 }
 
 body {
-  background: var(--background-primary);
+  /* Cream by default so ScrollTrigger pin spacers + transparent gaps
+     between brand-bg sections don't reveal a white band. Pages that
+     genuinely need a white surface (privacy, terms) wrap their content
+     in <main className="bg-background-primary">, which paints over body
+     where it matters. */
+  background: var(--background-brand);
   color: var(--content-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

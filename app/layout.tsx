@@ -56,7 +56,7 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${instrumentSerif.variable} antialiased`}
     >
-      <body className="bg-background-primary text-content-primary font-sans">
+      <body className="bg-background-brand text-content-primary font-sans">
         <SmoothScroll />
         {/* Sits outside the ScrollSmoother wrapper so position:fixed
             resolves against the viewport, not the transformed

@@ -173,7 +173,7 @@ export function StepsSection() {
     >
       <div
         ref={stageRef}
-        className="relative mx-auto flex h-screen max-w-[1440px] flex-col justify-center gap-10 px-6 sm:gap-12 sm:px-12 lg:gap-20 lg:px-[235px]"
+        className="relative mx-auto flex min-h-[clamp(540px,68vh,760px)] max-w-[1440px] flex-col justify-center gap-8 px-6 py-[clamp(48px,10vh,120px)] sm:gap-10 sm:px-12 lg:gap-12 lg:px-[235px]"
       >
         <h2
           ref={headlineRef}

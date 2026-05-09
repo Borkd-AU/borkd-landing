@@ -104,7 +104,7 @@ export function WaitlistSection() {
   return (
     <section
       id="waitlist"
-      className="w-full scroll-mt-32 bg-background-brand px-6 py-16 sm:px-12 md:py-20 lg:px-[235px] lg:py-[80px]"
+      className="w-full scroll-mt-32 bg-background-brand px-6 py-10 sm:px-12 sm:py-12 md:py-14 lg:px-[235px] lg:py-[64px]"
     >
       <div className="mx-auto flex max-w-[640px] flex-col items-center gap-6 text-center">
         <h2

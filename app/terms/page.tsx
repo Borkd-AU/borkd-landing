@@ -1,7 +1,6 @@
 // Starting-point template, drafted by an LLM — Joon to have a lawyer review before app store submission.
 
 import type { Metadata } from "next";
-import { FloatingTopBar } from "@/components/landing/SiteHeader";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
-      <FloatingTopBar />
       <main className="bg-background-primary text-content-primary">
         <div className="mx-auto w-full max-w-[820px] px-6 pb-16 pt-32 sm:px-8 sm:pt-40 lg:pb-24">
           <article className="space-y-10">

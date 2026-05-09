@@ -220,6 +220,7 @@ function Logo() {
 
 function NavPill({ className = "" }: { className?: string }) {
   const items: Array<{ label: string; href: string; external?: boolean }> = [
+    { label: "home", href: "/" },
     { label: "about", href: "/about" },
     { label: "for venues", href: "/for-venues" },
     { label: "contact", href: "mailto:info@borkd.app", external: true },
