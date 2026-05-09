@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
+import { SmoothScroll } from "@/components/SmoothScroll";
+import { FloatingTopBar } from "@/components/landing/SiteHeader";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -55,7 +57,14 @@ export default function RootLayout({
       className={`${dmSans.variable} ${instrumentSerif.variable} antialiased`}
     >
       <body className="bg-background-primary text-content-primary font-sans">
-        {children}
+        <SmoothScroll />
+        {/* Sits outside the ScrollSmoother wrapper so position:fixed
+            resolves against the viewport, not the transformed
+            smooth-content element. */}
+        <FloatingTopBar />
+        <div id="smooth-wrapper">
+          <div id="smooth-content">{children}</div>
+        </div>
       </body>
     </html>
   );

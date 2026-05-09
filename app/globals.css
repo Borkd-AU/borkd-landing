@@ -238,17 +238,12 @@
 
 /* === Base body styles === */
 html {
-  /* Native smooth scrolling for in-page anchor jumps. Disabled when the
-     user prefers reduced motion. ScrollTrigger uses programmatic scroll
-     positioning that ignores this property, so the pinned steps section
-     keeps its frame-by-frame scrub. */
-  scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
+  /* Smooth scrolling is owned by Lenis (components/SmoothScroll.tsx)
+     when motion is allowed — native `scroll-behavior: smooth` fights
+     Lenis's RAF-driven easing on anchor jumps, so we leave it `auto`
+     and let Lenis (or the browser, when Lenis is disabled by
+     prefers-reduced-motion) handle the jump. */
+  scroll-behavior: auto;
 }
 
 body {
