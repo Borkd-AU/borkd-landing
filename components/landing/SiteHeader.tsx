@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 /**
  * Two hero variants from the Figma file. Both use the same shared parts
@@ -80,9 +81,21 @@ export function SiteHeader() {
         </div>
 
         {/* Store buttons */}
-        <div className="absolute inset-x-0 bottom-[8%] z-10 flex flex-wrap justify-center gap-3 px-6 lg:bottom-[6%]">
-          <StoreButton variant="play" />
-          <StoreButton variant="apple" />
+        <div className="absolute inset-x-0 bottom-[8%] z-10 flex flex-col items-center px-6 lg:bottom-[6%]">
+          <div className="flex flex-wrap justify-center gap-3">
+            <StoreButton variant="play" />
+            <StoreButton variant="apple" />
+          </div>
+          <p className="mt-4 text-center text-sm text-content-secondary sm:text-base">
+            Not in stores yet. We&rsquo;re starting in Sydney —{" "}
+            <a
+              href="#waitlist"
+              className="underline underline-offset-4 hover:text-content-primary"
+            >
+              get on the waitlist
+            </a>
+            .
+          </p>
         </div>
       </div>
     </header>
@@ -165,9 +178,21 @@ export function SiteHeaderAlt() {
             <em className="font-display italic">actually work</em> for you
             and your pup
           </h1>
-          <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-            <StoreButton variant="play" />
-            <StoreButton variant="apple" />
+          <div className="flex flex-col items-center gap-4 lg:items-start">
+            <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
+              <StoreButton variant="play" />
+              <StoreButton variant="apple" />
+            </div>
+            <p className="text-center text-sm text-white/85 sm:text-base lg:text-left">
+              Not in stores yet. We&rsquo;re starting in Sydney —{" "}
+              <a
+                href="#waitlist"
+                className="underline underline-offset-4 hover:text-white"
+              >
+                get on the waitlist
+              </a>
+              .
+            </p>
           </div>
         </div>
       </div>
@@ -194,10 +219,10 @@ function Logo() {
 }
 
 function NavPill({ className = "" }: { className?: string }) {
-  const items = [
-    { label: "about", href: "#about" },
-    { label: "contact", href: "#contact" },
-    { label: "shop", href: "#shop" },
+  const items: Array<{ label: string; href: string; external?: boolean }> = [
+    { label: "about", href: "/about" },
+    { label: "for venues", href: "/for-venues" },
+    { label: "contact", href: "mailto:info@borkd.app", external: true },
   ];
   return (
     <nav
@@ -205,13 +230,27 @@ function NavPill({ className = "" }: { className?: string }) {
       className={`items-center rounded-full bg-black/30 px-6 py-3 backdrop-blur-sm ${className}`}
     >
       <ul className="flex items-center gap-6 text-[18px] tracking-tight text-white">
-        {items.map(({ label, href }) => (
-          <li key={label}>
-            <a href={href} className="transition-opacity hover:opacity-80">
-              {label}
-            </a>
-          </li>
-        ))}
+        {items.map(({ label, href, external }) =>
+          external ? (
+            <li key={label}>
+              <a
+                href={href}
+                className="transition-opacity hover:opacity-80"
+              >
+                {label}
+              </a>
+            </li>
+          ) : (
+            <li key={label}>
+              <Link
+                href={href}
+                className="transition-opacity hover:opacity-80"
+              >
+                {label}
+              </Link>
+            </li>
+          )
+        )}
       </ul>
     </nav>
   );
@@ -219,19 +258,25 @@ function NavPill({ className = "" }: { className?: string }) {
 
 function DownloadCta() {
   return (
-    <a
-      href="#download"
+    <Link
+      href="/#waitlist"
       className="inline-flex h-[40px] shrink-0 items-center rounded-full bg-background-accent px-4 text-content-contrast shadow-md transition-opacity hover:opacity-90 sm:h-[48px] sm:px-5"
     >
       <em className="font-display text-[16px] italic tracking-tight sm:text-[20px]">
-        <span className="sm:hidden">Get app</span>
-        <span className="hidden sm:inline">Download now</span>
+        <span className="sm:hidden">Join</span>
+        <span className="hidden sm:inline">Join waitlist</span>
       </em>
-    </a>
+    </Link>
   );
 }
 
-function StoreButton({ variant }: { variant: "play" | "apple" }) {
+function StoreButton({
+  variant,
+  disabled = true,
+}: {
+  variant: "play" | "apple";
+  disabled?: boolean;
+}) {
   const iconSrc =
     variant === "play"
       ? "/images/store/playstore-icon.svg"
@@ -244,12 +289,11 @@ function StoreButton({ variant }: { variant: "play" | "apple" }) {
       : "Download on the App Store";
   const href = variant === "play" ? "#play" : "#apple";
 
-  return (
-    <a
-      href={href}
-      aria-label={aria}
-      className="flex h-[59px] w-[178px] items-center gap-2 overflow-hidden rounded-md border border-[#a6a6a6] bg-black px-3 transition-opacity hover:opacity-90"
-    >
+  const baseClasses =
+    "flex h-[59px] w-[178px] items-center gap-2 overflow-hidden rounded-md border border-[#a6a6a6] bg-black px-3";
+
+  const inner = (
+    <>
       <Image
         src={iconSrc}
         alt=""
@@ -263,6 +307,29 @@ function StoreButton({ variant }: { variant: "play" | "apple" }) {
           {main}
         </span>
       </div>
+    </>
+  );
+
+  if (disabled) {
+    // Decorative placeholder — the caption underneath ("Not in stores yet…")
+    // is the real interactive surface, so we hide this from AT entirely.
+    return (
+      <div
+        aria-hidden="true"
+        className={`${baseClasses} cursor-not-allowed select-none opacity-60`}
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      aria-label={aria}
+      className={`${baseClasses} transition-opacity hover:opacity-90`}
+    >
+      {inner}
     </a>
   );
 }

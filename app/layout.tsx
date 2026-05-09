@@ -21,6 +21,21 @@ export const metadata: Metadata = {
   description:
     "Think Google Maps, but made for your dog's unique needs. Borkd cuts through the guesswork — so every outing is one you can actually look forward to.",
   metadataBase: new URL("https://www.borkd.app"),
+  openGraph: {
+    title: "Borkd — Good places, found.",
+    description:
+      "A vetted map of dog-friendly Sydney, made by the pup parents who actually go there.",
+    url: "https://www.borkd.app",
+    siteName: "Borkd",
+    locale: "en_AU",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Borkd — Good places, found.",
+    description:
+      "A vetted map of dog-friendly Sydney, made by the pup parents who actually go there.",
+  },
 };
 
 export const viewport: Viewport = {

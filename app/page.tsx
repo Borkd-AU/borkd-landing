@@ -4,6 +4,7 @@ import {
 } from "@/components/landing/SiteHeader";
 import { QuoteSection } from "@/components/landing/QuoteSection";
 import { StepsSection } from "@/components/landing/StepsSection";
+import { WaitlistSection } from "@/components/landing/WaitlistSection";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 
 export default function Home() {
@@ -13,6 +14,7 @@ export default function Home() {
       <SiteHeader />
       <QuoteSection />
       <StepsSection />
+      <WaitlistSection />
       <SiteFooter />
     </>
   );
