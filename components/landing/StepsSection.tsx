@@ -29,16 +29,13 @@ const steps = [
 /**
  * Section 3 — Horizontal-scroll storytelling.
  *
- * Behaviour:
+ * Behaviour (every viewport, including mobile):
  *   1. As the section enters the viewport, the headline slides in from
  *      RIGHT to left and locks at its final position.
  *   2. With the section pinned, the 3-step track also slides in from the
  *      right as the user continues scrolling vertically.
  *
- * On touch devices we fall back to a CSS scroll-snap track so users can
- * swipe through steps naturally instead of hijacking the page scroll.
- *
- * Users with `prefers-reduced-motion: reduce` see the same swipe-able
+ * Users with `prefers-reduced-motion: reduce` see a static swipe-able
  * track without any pinning or scroll-driven animation.
  */
 export function StepsSection() {
@@ -55,15 +52,11 @@ export function StepsSection() {
       const stage = stageRef.current;
       if (!section || !headline || !track || !stage) return;
 
-      // Skip the GSAP-pinned timeline on small viewports and on
-      // prefers-reduced-motion. CSS scroll-snap takes over instead.
-      const desktop = window.matchMedia("(min-width: 1024px)").matches;
+      // Reduced-motion users get the static fallback track.
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
-      if (!desktop || reduced) {
-        // Clear any inline transforms left over from a previous run
-        // (e.g. the user resized the window from desktop to mobile).
+      if (reduced) {
         gsap.set([headline, track], { clearProps: "all" });
         return;
       }
@@ -73,11 +66,6 @@ export function StepsSection() {
       // image loads can adjust the pin distance without rebuilding.
       const overflow = () =>
         Math.max(0, track.scrollWidth - stage.clientWidth);
-
-      // Initial state — headline off-screen RIGHT, track parked off-screen
-      // right so cards enter from the right edge of the stage.
-      gsap.set(headline, { xPercent: 110, opacity: 0 });
-      gsap.set(track, { x: () => stage.clientWidth });
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -91,22 +79,23 @@ export function StepsSection() {
         },
       });
 
-      tl.to(headline, {
-        xPercent: 0,
-        opacity: 1,
-        ease: "power2.out",
-        duration: 1,
-      });
-      // Slide the whole track in from the right, then continue panning
-      // left until the last card is fully visible at the stage's right
-      // edge — i.e. final x = -overflow().
-      tl.to(
+      // Headline: slide in from the RIGHT edge of the stage.
+      tl.fromTo(
+        headline,
+        { xPercent: 110, opacity: 0 },
+        { xPercent: 0, opacity: 1, ease: "power2.out", duration: 1 }
+      );
+      // Track: enter from the right, then pan left until the last card
+      // is fully visible at the stage's right edge — i.e. final x = -overflow().
+      tl.fromTo(
         track,
+        { x: () => stage.clientWidth },
         { x: () => -overflow(), ease: "none", duration: 2 },
         ">"
       );
 
-      // Refresh after fonts settle so widths are accurate.
+      // Refresh once layout is final so the pin distance is accurate.
+      ScrollTrigger.refresh();
       document.fonts?.ready.then(() => ScrollTrigger.refresh());
     },
     { scope: sectionRef }
@@ -116,11 +105,11 @@ export function StepsSection() {
     <section
       ref={sectionRef}
       id="steps"
-      className="relative w-full bg-background-brand py-16 lg:py-0"
+      className="relative w-full bg-background-brand"
     >
       <div
         ref={stageRef}
-        className="relative mx-auto flex max-w-[1440px] flex-col gap-10 overflow-hidden px-6 sm:gap-12 sm:px-12 lg:h-screen lg:justify-center lg:gap-20 lg:px-[235px]"
+        className="relative mx-auto flex h-screen max-w-[1440px] flex-col justify-center gap-10 overflow-hidden px-6 sm:gap-12 sm:px-12 lg:gap-20 lg:px-[235px]"
       >
         <h2
           ref={headlineRef}
@@ -135,19 +124,10 @@ export function StepsSection() {
 
         <div
           ref={trackRef}
-          className="
-            -mx-6 flex gap-6 px-6 sm:-mx-12 sm:gap-12 sm:px-12
-            overflow-x-auto scroll-smooth pb-4
-            snap-x snap-mandatory
-            [-ms-overflow-style:none] [scrollbar-width:none]
-            [&::-webkit-scrollbar]:hidden
-            lg:mx-0 lg:gap-[80px] lg:overflow-visible lg:px-0 lg:pb-0 lg:will-change-transform
-          "
+          className="flex gap-6 will-change-transform sm:gap-12 lg:gap-[80px]"
         >
           {steps.map((s) => (
-            <div key={s.number} className="snap-center lg:snap-none">
-              <StepCard {...s} />
-            </div>
+            <StepCard key={s.number} {...s} />
           ))}
         </div>
       </div>
