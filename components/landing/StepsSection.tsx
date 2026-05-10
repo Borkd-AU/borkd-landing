@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef } from "react";
 import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap";
 import { StepCard, STEP_CARD_WIDTH_CLASSES } from "./StepCard";
@@ -177,7 +178,7 @@ export function StepsSection() {
       >
         <h2
           ref={headlineRef}
-          className="max-w-[1168px] leading-tight tracking-tight text-content-brand text-[clamp(28px,5vw,50px)]"
+          className="max-w-[1168px] leading-tight tracking-tight text-content-brand text-[clamp(28px,5vw,50px)] lg:max-w-[820px]"
           style={{ fontVariationSettings: "'opsz' 14" }}
         >
           Think Google Maps, but made for{" "}
@@ -201,6 +202,39 @@ export function StepsSection() {
             {steps.map((s) => (
               <StepCard key={s.number} {...s} />
             ))}
+          </div>
+        </div>
+
+        {/* Right-column hero composite — desktop only.
+            The pinned stage's left column holds the headline + cards,
+            so the right-hand area is empty space. Drop the unused
+            first-option hero (sky/field background + man+jojo
+            illustration) in there as a vertical composite that mirrors
+            the QuoteSection café image's shape, so the page reads as
+            "left text + right image" both here and in the about
+            section above. Hidden below lg because the pinned timeline
+            already uses the full width on smaller viewports. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-[6%] top-1/2 hidden aspect-[516/833] w-[clamp(220px,18vw,300px)] -translate-y-1/2 overflow-hidden rounded-2xl bg-cloud-300 lg:block"
+        >
+          <Image
+            src="/images/header-bg.jpg"
+            alt=""
+            fill
+            sizes="300px"
+            quality={90}
+            className="object-cover object-bottom"
+          />
+          <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-3">
+            <Image
+              src="/images/hero-illustration.png"
+              alt=""
+              width={526}
+              height={355}
+              sizes="240px"
+              className="h-auto w-[78%]"
+            />
           </div>
         </div>
       </div>
