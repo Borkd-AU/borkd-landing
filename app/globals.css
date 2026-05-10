@@ -244,14 +244,17 @@ html {
      and let Lenis (or the browser, when Lenis is disabled by
      prefers-reduced-motion) handle the jump. */
   scroll-behavior: auto;
+  /* Cream backstop. ScrollSmoother transforms #smooth-content, so any
+     overscroll / pin-spacer / transformed-edge area falls back to the
+     html element's painted background. Painting cream here means a
+     stray white band can never appear between brand-bg sections,
+     regardless of which utility class wins on body. */
+  background: var(--background-brand);
 }
 
 body {
-  /* Cream by default so ScrollTrigger pin spacers + transparent gaps
-     between brand-bg sections don't reveal a white band. Pages that
-     genuinely need a white surface (privacy, terms) wrap their content
-     in <main className="bg-background-primary">, which paints over body
-     where it matters. */
+  /* Match html so the cascade is consistent for sections that read
+     body's background. */
   background: var(--background-brand);
   color: var(--content-primary);
   font-family: var(--font-sans);
