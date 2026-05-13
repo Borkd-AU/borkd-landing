@@ -24,24 +24,25 @@ const steps = [
 ];
 
 /**
- * Section 3 — adapts by breakpoint.
+ * Section 3 — pinned scroll storytelling, adapts direction by breakpoint.
  *
- * ≥ lg (desktop):
- *   Pinned horizontal-scroll storytelling. Left column holds the
- *   headline + a one-card-wide focus viewport; right column shows a
- *   portrait hero composite that mirrors the QuoteSection café image
- *   in shape and size. The cards pan through the focus viewport on
- *   scroll (Step 1 → 2 → 3), pinned for 2.5 viewports of scroll, with
- *   ScrollTrigger snap pulling the user onto each settled step.
+ * ≥ lg (desktop): horizontal pan
+ *   Cards live in a flex-row track. The focus viewport is one card
+ *   wide. GSAP translates the track on X as the user scrolls — Step 1
+ *   → 2 → 3 slide through left-to-right. Hero composite sits in the
+ *   right column.
  *
- * < lg (mobile / tablet):
- *   No pin, no horizontal pan. Headline at the top, three cards
- *   stacked vertically below it, hero composite hidden. The whole
- *   section scrolls vertically like every other section on the page.
- *   Touch users get to scroll naturally instead of having vertical
- *   gestures hijacked into a horizontal animation.
+ * < lg (mobile / tablet): vertical pan
+ *   Cards live in a flex-col track. The focus viewport is one card
+ *   tall. GSAP translates the track on Y. Same Step 1 → 2 → 3 beats,
+ *   just rotated 90°. No hero composite (hidden below lg).
  *
- * Reduced-motion users (any viewport) get the mobile-style stack.
+ * Both directions:
+ *   • 2.5 viewports of pinned scroll, scrub: 0.1
+ *   • ScrollTrigger snap pulls to the nearest step label
+ *   • Headline slide-in beat at the start
+ *
+ * Reduced-motion users skip the pin entirely and see a static stack.
  */
 export function StepsSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -59,106 +60,109 @@ export function StepsSection() {
       const focus = focusRef.current;
       if (!section || !headline || !track || !stage || !focus) return;
 
-      const desktop = window.matchMedia("(min-width: 1024px)");
-      const reduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      );
-
-      // Skip the pinned timeline entirely below lg and for reduced
-      // motion — mobile/tablet get a static vertical stack via CSS
-      // (see JSX below: `lg:overflow-hidden` etc.). gsap.matchMedia
-      // tears down + rebuilds the timeline cleanly on viewport
-      // crossings so resizing the window doesn't leave half-state.
       const mm = gsap.matchMedia();
 
-      mm.add(
-        {
-          isDesktop: "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
-        },
-        (context) => {
-          if (!context.conditions?.isDesktop) return;
+      // Reduced-motion fallback (any viewport): no pin, no animation.
+      // The CSS layout (flex-col below lg, flex-row at lg+) already
+      // shows all three cards so a static stack is perfectly readable.
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        gsap.set([headline, track], { clearProps: "all" });
+      });
 
-          // Card N's left edge in track-local coordinates. To align
-          // card N inside the focus viewport, translate the track by
-          // -card.offsetLeft.
-          const cardX = (n: number) => {
-            const card = track.children[n] as HTMLElement | undefined;
-            return card ? -card.offsetLeft : 0;
-          };
+      // Shared timeline factory — wires up snap + per-card holds.
+      // axis is "x" on desktop, "y" on mobile/tablet.
+      const buildTimeline = (axis: "x" | "y") => {
+        const offsetForCard = (n: number) => {
+          const card = track.children[n] as HTMLElement | undefined;
+          if (!card) return 0;
+          return axis === "x" ? -card.offsetLeft : -card.offsetTop;
+        };
+        const trackEntry = () =>
+          axis === "x" ? focus.clientWidth : focus.clientHeight;
 
-          // Track's off-stage starting position — first card is parked
-          // just past the right edge of the focus viewport.
-          const trackEntryX = () => focus.clientWidth;
-
-          const tl = gsap.timeline({
-            scrollTrigger: {
-              trigger: section,
-              start: "top top",
-              end: () => `+=${window.innerHeight * 2.5}`,
-              pin: true,
-              // Tight scrub — ScrollSmoother already smooths wheel
-              // input, so we avoid double easing.
-              scrub: 0.1,
-              anticipatePin: 1,
-              invalidateOnRefresh: true,
-              snap: {
-                snapTo: "labelsDirectional",
-                duration: { min: 0.2, max: 0.5 },
-                delay: 0.05,
-                ease: "power2.inOut",
-              },
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: section,
+            start: "top top",
+            end: () => `+=${window.innerHeight * 2.5}`,
+            pin: true,
+            scrub: 0.1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            snap: {
+              snapTo: "labelsDirectional",
+              duration: { min: 0.2, max: 0.5 },
+              delay: 0.05,
+              ease: "power2.inOut",
             },
-          });
+          },
+        });
 
-          // 0.0 → 0.5 — Headline reveal.
-          tl.fromTo(
-            headline,
-            { xPercent: 30, opacity: 0 },
-            { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.5 }
-          );
+        // Headline reveal (uses xPercent on desktop, yPercent on mobile
+        // so the slide-in direction matches the card pan).
+        tl.fromTo(
+          headline,
+          axis === "x"
+            ? { xPercent: 30, opacity: 0 }
+            : { yPercent: 30, opacity: 0 },
+          {
+            xPercent: 0,
+            yPercent: 0,
+            opacity: 1,
+            ease: "power2.out",
+            duration: 0.5,
+          }
+        );
 
-          // 0.5 → 1.0 — Track enters and lands Step 1.
-          tl.fromTo(
-            track,
-            { x: trackEntryX },
-            { x: () => cardX(0), ease: "power2.out", duration: 0.5 }
-          );
-          tl.addLabel("step-1");
-          tl.to({}, { duration: 0.3 });
+        // Track enters from off-stage and lands Step 1.
+        tl.fromTo(
+          track,
+          { [axis]: trackEntry },
+          {
+            [axis]: () => offsetForCard(0),
+            ease: "power2.out",
+            duration: 0.5,
+          }
+        );
+        tl.addLabel("step-1");
+        tl.to({}, { duration: 0.3 });
 
-          // Step 2.
-          tl.to(track, {
-            x: () => cardX(1),
-            ease: "power2.inOut",
-            duration: 0.3,
-          });
-          tl.addLabel("step-2");
-          tl.to({}, { duration: 0.3 });
+        // Step 2.
+        tl.to(track, {
+          [axis]: () => offsetForCard(1),
+          ease: "power2.inOut",
+          duration: 0.3,
+        });
+        tl.addLabel("step-2");
+        tl.to({}, { duration: 0.3 });
 
-          // Step 3.
-          tl.to(track, {
-            x: () => cardX(2),
-            ease: "power2.inOut",
-            duration: 0.3,
-          });
-          tl.addLabel("step-3");
-          tl.to({}, { duration: 0.3 });
+        // Step 3.
+        tl.to(track, {
+          [axis]: () => offsetForCard(2),
+          ease: "power2.inOut",
+          duration: 0.3,
+        });
+        tl.addLabel("step-3");
+        tl.to({}, { duration: 0.3 });
+      };
 
-          // Recompute once fonts settle in case card widths shift.
+      // Desktop branch — horizontal pan.
+      mm.add(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        () => {
+          buildTimeline("x");
           document.fonts?.ready.then(() => ScrollTrigger.refresh());
         }
       );
 
-      // Below lg, ensure no leftover inline transforms / opacity from
-      // a prior desktop mount sneak through (matchMedia cleanup
-      // already reverts most of it, but `xPercent` on the headline
-      // can persist if the user crosses the breakpoint mid-animation).
-      mm.add("(max-width: 1023px)", () => {
-        gsap.set([headline, track], { clearProps: "all" });
-      });
-
-      void desktop;
-      void reduced;
+      // Mobile / tablet branch — vertical pan.
+      mm.add(
+        "(max-width: 1023px) and (prefers-reduced-motion: no-preference)",
+        () => {
+          buildTimeline("y");
+          document.fonts?.ready.then(() => ScrollTrigger.refresh());
+        }
+      );
     },
     { scope: sectionRef }
   );
@@ -190,25 +194,28 @@ export function StepsSection() {
           </em>
         </h2>
 
-        {/* Card track.
-            • lg+ : one-card-wide focus viewport (lg:w-[460px]), GSAP
-                    pans the track horizontally through it
-                    (overflow-hidden clips off-stage cards).
-            • < lg: focus viewport is full-width, track switches to a
-                    vertical column so the three cards stack and the
-                    user just scrolls past them. */}
+        {/* Focus viewport — masks the track so only one card is ever
+            visible. On lg+ it's one card wide (overflow-x clipped);
+            below lg it's one card tall (overflow-y clipped). The track
+            inside slides on the corresponding axis.
+            min-h on mobile gives the focus area a tall-enough mask
+            that the card breathes — tied to the same clamp the stage
+            uses so cards aren't squished on short viewports. */}
         <div
           ref={focusRef}
           className="
-            w-full lg:overflow-hidden
+            w-full overflow-hidden
+            h-[clamp(180px,28vh,240px)]
+            lg:h-auto
             lg:w-[clamp(280px,30vw,460px)] lg:max-w-[460px]
           "
         >
           <div
             ref={trackRef}
             className="
-              flex flex-col gap-8 sm:gap-10
-              lg:flex-row lg:gap-[80px] lg:will-change-transform
+              flex flex-col gap-8 will-change-transform
+              sm:gap-10
+              lg:flex-row lg:gap-[80px]
             "
           >
             {steps.map((s) => (
@@ -236,7 +243,7 @@ export function StepsSection() {
             src="/images/header-bg.jpg"
             alt=""
             fill
-            sizes="(min-width: 1280px) 516px, 460px"
+            sizes="(min-width: 1280px) 460px, 30vw"
             quality={90}
             className="object-cover object-bottom"
           />
@@ -246,7 +253,7 @@ export function StepsSection() {
               alt=""
               width={526}
               height={355}
-              sizes="(min-width: 1280px) 400px, 360px"
+              sizes="(min-width: 1280px) 360px, 28vw"
               className="h-auto w-[78%]"
             />
           </div>
