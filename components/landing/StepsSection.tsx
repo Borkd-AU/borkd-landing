@@ -50,6 +50,7 @@ export function StepsSection() {
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const focusRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
@@ -79,6 +80,7 @@ export function StepsSection() {
         };
         const trackEntry = () =>
           axis === "x" ? focus.clientWidth : focus.clientHeight;
+        const hero = heroRef.current;
 
         const tl = gsap.timeline({
           scrollTrigger: {
@@ -111,8 +113,29 @@ export function StepsSection() {
             opacity: 1,
             ease: "power2.out",
             duration: 0.5,
-          }
+          },
+          0
         );
+
+        // Hero composite (desktop only) slides in alongside the
+        // headline — mirrored direction, slightly slower so it feels
+        // like a separate beat rather than a duplicate of the text.
+        // The xPercent tween is independent from the parallax yPercent
+        // tween (see below) so the two animations layer cleanly on a
+        // single transform.
+        if (axis === "x" && hero) {
+          tl.fromTo(
+            hero,
+            { xPercent: 25, opacity: 0 },
+            {
+              xPercent: 0,
+              opacity: 1,
+              ease: "power2.out",
+              duration: 0.6,
+            },
+            0
+          );
+        }
 
         // Track enters from off-stage and lands Step 1.
         tl.fromTo(
@@ -144,12 +167,30 @@ export function StepsSection() {
         });
         tl.addLabel("step-3");
         tl.to({}, { duration: 0.3 });
+
+        // Subtle parallax on the hero composite for the entire pinned
+        // duration — yPercent drifts ~6% around the -50 baseline so
+        // it never looks frozen while the cards are panning.
+        if (axis === "x" && hero) {
+          tl.fromTo(
+            hero,
+            { yPercent: -53 },
+            { yPercent: -47, ease: "none", duration: 2.5 },
+            0
+          );
+        }
       };
 
       // Desktop branch — horizontal pan.
       mm.add(
         "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
         () => {
+          // Hero baseline transform — vertically centre the absolutely
+          // -positioned hero before the timeline takes over. Replaces
+          // Tailwind's `-translate-y-1/2` which GSAP would otherwise
+          // clobber on the first tween tick.
+          const hero = heroRef.current;
+          if (hero) gsap.set(hero, { yPercent: -50 });
           buildTimeline("x");
           document.fonts?.ready.then(() => ScrollTrigger.refresh());
         }
@@ -230,12 +271,19 @@ export function StepsSection() {
             paddings, so the hero scales down with viewport width and
             tops out at 460px on wider screens. Aspect 516/833 matches
             the QuoteSection café image. */}
+        {/* Hero: vertically centred via `top-1/2` + GSAP `yPercent: -50`
+            baseline (set inside useGSAP), then the timeline layers a
+            slide-in (xPercent) plus a ±3% parallax (yPercent) on top.
+            We don't use Tailwind's `-translate-y-1/2` here because
+            GSAP rewrites the transform property and would clobber it
+            on the first tween tick. */}
         <div
+          ref={heroRef}
           aria-hidden
           className="
             pointer-events-none absolute right-12 top-1/2
             hidden aspect-[516/833] w-[clamp(280px,30vw,460px)]
-            -translate-y-1/2 overflow-hidden rounded-2xl bg-cloud-300
+            overflow-hidden rounded-2xl bg-cloud-300
             lg:right-[clamp(48px,16vw,235px)] lg:block
           "
         >
