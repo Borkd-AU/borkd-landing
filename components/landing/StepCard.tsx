@@ -6,7 +6,7 @@
  * mask and card never drift apart.
  */
 export const STEP_CARD_WIDTH_CLASSES =
-  "w-[82vw] max-w-[753px] sm:w-[60vw] lg:w-[753px]";
+  "w-[82vw] max-w-[753px] sm:w-[60vw] lg:w-[clamp(280px,30vw,460px)] lg:max-w-[460px]";
 
 export function StepCard({
   number,
