@@ -87,21 +87,13 @@ export function SiteHeader() {
           />
         </div>
 
-        {/* Store buttons */}
+        {/* Pre-launch CTA — single "Join the waitlist" button. When
+            the app ships, swap this for the store-button pair (see git
+            history for the markup). */}
         <div className="absolute inset-x-0 bottom-[8%] z-10 flex flex-col items-center px-6 lg:bottom-[6%]">
-          <div className="flex flex-wrap justify-center gap-3">
-            <StoreButton variant="play" />
-            <StoreButton variant="apple" />
-          </div>
+          <WaitlistCta />
           <p className="mt-4 text-center text-sm text-content-secondary sm:text-base">
-            Not in stores yet. We&rsquo;re starting in Sydney —{" "}
-            <a
-              href="#waitlist"
-              className="underline underline-offset-4 hover:text-content-primary"
-            >
-              get on the waitlist
-            </a>
-            .
+            Not in stores yet. We&rsquo;re starting in Sydney.
           </p>
         </div>
       </div>
@@ -186,19 +178,12 @@ export function SiteHeaderAlt() {
             and your pup
           </h1>
           <div className="flex flex-col items-center gap-4 lg:items-start">
-            <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-              <StoreButton variant="play" />
-              <StoreButton variant="apple" />
-            </div>
+            {/* Pre-launch CTA — single "Join the waitlist" button.
+                When the app ships, swap this for the store-button pair
+                (see git history for the markup). */}
+            <WaitlistCta />
             <p className="text-center text-sm text-white/85 sm:text-base lg:text-left">
-              Not in stores yet. We&rsquo;re starting in Sydney —{" "}
-              <a
-                href="#waitlist"
-                className="underline underline-offset-4 hover:text-white"
-              >
-                get on the waitlist
-              </a>
-              .
+              Not in stores yet. We&rsquo;re starting in Sydney.
             </p>
           </div>
         </div>
@@ -267,6 +252,22 @@ function DownloadCta() {
       <em className="font-display text-[16px] italic tracking-tight sm:text-[20px]">
         <span className="sm:hidden">Join</span>
         <span className="hidden sm:inline">Join waitlist</span>
+      </em>
+    </Link>
+  );
+}
+
+// Pre-launch hero CTA. Big version of DownloadCta, sized like the
+// store buttons it replaces so the hero composition holds its weight.
+// Swap back to the StoreButton pair when the app ships.
+function WaitlistCta() {
+  return (
+    <Link
+      href="#waitlist"
+      className="inline-flex h-[56px] shrink-0 items-center justify-center rounded-full bg-background-accent px-7 text-content-contrast shadow-md transition-opacity hover:opacity-90 sm:h-[59px] sm:px-8"
+    >
+      <em className="font-display text-[20px] italic tracking-tight sm:text-[22px]">
+        Join the waitlist
       </em>
     </Link>
   );
