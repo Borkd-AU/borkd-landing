@@ -193,12 +193,12 @@ export function WaitlistSection() {
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSubmitting}
               aria-invalid={errorMessage ? true : undefined}
-              className="flex-1 rounded-md border border-border-muted bg-background-primary px-4 py-3 text-base text-content-primary placeholder:text-content-tertiary focus:border-border-accent focus:outline-none focus:ring-2 focus:ring-border-accent/40 disabled:opacity-60"
+              className="flex-1 rounded-full border border-border-muted bg-background-primary px-5 py-3 text-base text-content-primary placeholder:text-content-tertiary focus:border-border-accent focus:outline-none focus:ring-2 focus:ring-border-accent/40 disabled:opacity-60"
             />
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-background-accent px-5 py-3 text-content-contrast shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full bg-background-accent px-6 py-3 text-content-contrast shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <em className="font-display text-[18px] italic tracking-tight sm:text-[20px]">
                 {isSubmitting ? "Joining…" : "Join the waitlist"}

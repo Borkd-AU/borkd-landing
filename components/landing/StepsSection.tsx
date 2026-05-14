@@ -9,12 +9,12 @@ const steps = [
   {
     number: 1 as const,
     title: "Tell us about your dog.",
-    body: "Breed, size, temperament — so recommendations actually make sense for you.",
+    body: "Breed, size, energy, the quirks. So a great dane never ends up at a tiny cocktail bar.",
   },
   {
     number: 2 as const,
     title: "Discover places you'll both love.",
-    body: "Parks, cafés, beaches, stays — all vetted, reviewed and accurate.",
+    body: "Parks, cafés, beaches, stays. Vouched for by owners, kept fresh by the people who go there.",
   },
   {
     number: 3 as const,
