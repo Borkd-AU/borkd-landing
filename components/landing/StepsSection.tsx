@@ -246,7 +246,7 @@ export function StepsSection() {
           ref={focusRef}
           className="
             w-full overflow-hidden
-            h-[clamp(180px,28vh,240px)]
+            h-[clamp(220px,30vh,260px)]
             lg:h-auto
             lg:w-[clamp(280px,30vw,460px)] lg:max-w-[460px]
           "
