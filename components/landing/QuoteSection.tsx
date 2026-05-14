@@ -47,9 +47,50 @@ export function QuoteSection() {
             className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
-            A water bowl by the back door isn&rsquo;t the same as truly
-            welcome. Borkd cuts through the guesswork — so every outing is
-            one you can actually look forward to.
+            There&rsquo;s allowed. Then there&rsquo;s welcomed.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            Most listings are vague, outdated, or written by people who
+            don&rsquo;t actually have a dog.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            You shouldn&rsquo;t have to drive across the city to find
+            that out.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            Borkd is the map we wished existed. Every venue vouched for
+            by real owners, with the details that matter.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            Water, shade, indoor seating, how staff treat you when you
+            walk in. And the pubs where your dog has more friends than
+            you do.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            And what&rsquo;s happening right now — a magpie back on
+            swooping duty, the local park heaving with regulars, a path
+            closed after rain.
+          </p>
+          <p
+            className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
+            style={{ fontVariationSettings: "'opsz' 14" }}
+          >
+            Every outing, one you can look forward to.
           </p>
         </div>
       </div>
