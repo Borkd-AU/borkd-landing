@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   useGSAP,
   ScrollSmoother,
@@ -21,6 +23,8 @@ import {
  * native browser scrolling.
  */
 export function SmoothScroll() {
+  const pathname = usePathname();
+
   useGSAP(() => {
     if (
       typeof window === "undefined" ||
@@ -48,6 +52,18 @@ export function SmoothScroll() {
     // them now that the smoother is wrapping the page.
     ScrollTrigger.refresh();
   });
+
+  // ScrollSmoother owns scroll position via transforms on #smooth-content,
+  // so Next's default scroll-restoration-on-nav doesn't reach it. Snap to
+  // the top on every pathname change.
+  useEffect(() => {
+    const smoother = ScrollSmoother.get();
+    if (smoother) {
+      smoother.scrollTop(0);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
 
   return null;
 }
