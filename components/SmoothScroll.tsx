@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import {
+  gsap,
   useGSAP,
   ScrollSmoother,
   ScrollTrigger,
@@ -19,38 +20,56 @@ import {
  *     <div id="smooth-content">{children}</div>
  *   </div>
  *
+ * DESKTOP ONLY (>= lg / 1024px). ScrollSmoother is created with
+ * `normalizeScroll: true`, which sets an inline `touch-action: pan-x`
+ * lock on <body>/<html> and intercepts touch input at the document
+ * level. On phones that lock fights — and breaks — the native vertical
+ * page scroll *and* the horizontal swipe carousel in StepsSection
+ * (which below lg is a plain CSS scroll-snap container, no GSAP). So
+ * the smoother is gated behind the same 1024px breakpoint StepsSection
+ * uses: desktop gets the pinned horizontal pan that needs it, mobile
+ * keeps untouched native scrolling. `gsap.matchMedia` auto-reverts the
+ * smoother (and its touch-action mutations) when the viewport crosses
+ * the breakpoint, so nothing leaks across.
+ *
  * Skipped for `prefers-reduced-motion: reduce` — those users keep
- * native browser scrolling.
+ * native browser scrolling on every viewport.
  */
 export function SmoothScroll() {
   const pathname = usePathname();
 
   useGSAP(() => {
-    if (
-      typeof window === "undefined" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      return;
-    }
+    const mm = gsap.matchMedia();
 
-    ScrollSmoother.create({
-      wrapper: "#smooth-wrapper",
-      content: "#smooth-content",
-      // 1.0 ≈ tight, gsap.com-style. Higher = floatier.
-      smooth: 1.0,
-      // iOS Safari momentum scroll is excellent on its own; smoothing
-      // touch input on top can feel laggy.
-      smoothTouch: 0,
-      // Parse data-speed / data-lag attributes for parallax effects.
-      effects: true,
-      // Quiets scroll-jank from address-bar resize and similar.
-      normalizeScroll: true,
-    });
+    mm.add(
+      "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+      () => {
+        ScrollSmoother.create({
+          wrapper: "#smooth-wrapper",
+          content: "#smooth-content",
+          // 1.0 ≈ tight, gsap.com-style. Higher = floatier.
+          smooth: 1.0,
+          // iOS Safari momentum scroll is excellent on its own; smoothing
+          // touch input on top can feel laggy.
+          smoothTouch: 0,
+          // Parse data-speed / data-lag attributes for parallax effects.
+          effects: true,
+          // Quiets scroll-jank from address-bar resize and similar.
+          normalizeScroll: true,
+        });
 
-    // Child useGSAP hooks ran first (React effects fire bottom-up);
-    // their triggers were registered against window scroll. Re-measure
-    // them now that the smoother is wrapping the page.
-    ScrollTrigger.refresh();
+        // Child useGSAP hooks ran first (React effects fire bottom-up);
+        // their triggers were registered against window scroll. Re-measure
+        // them now that the smoother is wrapping the page.
+        ScrollTrigger.refresh();
+
+        // matchMedia cleanup: kill the smoother when we drop below lg so
+        // its normalizeScroll touch-action mutations don't strand mobile.
+        return () => {
+          ScrollSmoother.get()?.kill();
+        };
+      }
+    );
   });
 
   // ScrollSmoother owns scroll position via transforms on #smooth-content,
