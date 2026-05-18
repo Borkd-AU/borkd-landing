@@ -269,14 +269,3 @@ i {
   font-family: var(--font-display);
   font-style: italic;
 }
-
-/* Hide the scrollbar on swipe carousels (StepsSection mobile track)
-   while keeping the element scrollable by touch/keyboard. Not a
-   Tailwind built-in, so registered as a v4 custom utility. */
-@utility scrollbar-none {
-  -ms-overflow-style: none; /* old Edge / IE */
-  scrollbar-width: none; /* Firefox */
-  &::-webkit-scrollbar {
-    display: none; /* Chrome / Safari / WebKit */
-  }
-}

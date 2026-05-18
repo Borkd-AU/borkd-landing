@@ -24,20 +24,19 @@ const steps = [
 ];
 
 /**
- * Section 3 — pinned scroll storytelling, adapts direction by breakpoint.
+ * Section 3 — pinned scroll storytelling. Same interaction on every
+ * viewport: the section pins, vertical scroll drives a HORIZONTAL pan
+ * of the card track (Step 1 → 2 → 3), with a headline slide-in beat.
  *
- * ≥ lg (desktop): horizontal pan
- *   Cards live in a flex-row track. The focus viewport is one card
- *   wide. GSAP translates the track on X as the user scrolls — Step 1
- *   → 2 → 3 slide through left-to-right. Hero composite sits in the
- *   right column.
+ * ≥ lg (desktop): the focus viewport is one card wide and a hero
+ *   composite sits in the right column (slide-in + parallax).
  *
- * < lg (mobile / tablet): vertical pan
- *   Cards live in a flex-col track. The focus viewport is one card
- *   tall. GSAP translates the track on Y. Same Step 1 → 2 → 3 beats,
- *   just rotated 90°. No hero composite (hidden below lg).
+ * < lg (mobile / tablet): identical pin + horizontal pan, just no
+ *   hero composite (hidden below lg). ScrollTrigger drives the pin on
+ *   native touch scroll — ScrollSmoother is desktop-gated, so
+ *   normalizeScroll never touches mobile.
  *
- * Both directions:
+ * Both:
  *   • 2.5 viewports of pinned scroll, scrub: 0.1
  *   • ScrollTrigger snap pulls to the nearest step label
  *   • Headline slide-in beat at the start
@@ -63,122 +62,124 @@ export function StepsSection() {
 
       const mm = gsap.matchMedia();
 
-      // Desktop branch only. Below lg the cards are a native
-      // horizontal swipe carousel (CSS scroll-snap, see markup) — no
-      // GSAP pin there, so finger swipe / momentum / a11y come for
-      // free and ScrollSmoother's vertical normalizeScroll never
-      // fights an internal scroller.
-      //
-      // Reduced-motion (desktop): the lg flex-row layout already lays
-      // all three cards out side by side, so clearing GSAP props
-      // leaves a readable static row.
-      mm.add(
-        "(min-width: 1024px) and (prefers-reduced-motion: reduce)",
-        () => {
-          gsap.set([headline, track], { clearProps: "all" });
-        }
-      );
+      // Reduced-motion (any viewport): no pin, no animation. The static
+      // card layout (flex-col below lg, flex-row at lg) is readable as-is.
+      mm.add("(prefers-reduced-motion: reduce)", () => {
+        gsap.set([headline, track], { clearProps: "all" });
+      });
 
-      // Desktop branch — pinned horizontal pan, Step 1 → 2 → 3.
-      mm.add(
-        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
-        () => {
-          const hero = heroRef.current;
-          // Hero baseline transform — vertically centre the absolutely
-          // -positioned hero before the timeline takes over. Replaces
-          // Tailwind's `-translate-y-1/2` which GSAP would otherwise
-          // clobber on the first tween tick.
-          if (hero) gsap.set(hero, { yPercent: -50 });
+      // Shared pinned horizontal-pan timeline. `withHero` is true only
+      // on desktop, where the right-column composite slides in + drifts.
+      const buildTimeline = (withHero: boolean) => {
+        const hero = withHero ? heroRef.current : null;
+        // Hero baseline transform — vertically centre the absolutely
+        // -positioned hero before the timeline takes over. Replaces
+        // Tailwind's `-translate-y-1/2` which GSAP would otherwise
+        // clobber on the first tween tick.
+        if (hero) gsap.set(hero, { yPercent: -50 });
 
-          const offsetForCard = (n: number) => {
-            const card = track.children[n] as HTMLElement | undefined;
-            return card ? -card.offsetLeft : 0;
-          };
+        const offsetForCard = (n: number) => {
+          const card = track.children[n] as HTMLElement | undefined;
+          return card ? -card.offsetLeft : 0;
+        };
 
-          const tl = gsap.timeline({
-            scrollTrigger: {
-              trigger: section,
-              start: "top top",
-              end: () => `+=${window.innerHeight * 2.5}`,
-              pin: true,
-              scrub: 0.1,
-              anticipatePin: 1,
-              invalidateOnRefresh: true,
-              snap: {
-                snapTo: "labelsDirectional",
-                duration: { min: 0.2, max: 0.5 },
-                delay: 0.05,
-                ease: "power2.inOut",
-              },
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: section,
+            start: "top top",
+            end: () => `+=${window.innerHeight * 2.5}`,
+            pin: true,
+            scrub: 0.1,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            snap: {
+              snapTo: "labelsDirectional",
+              duration: { min: 0.2, max: 0.5 },
+              delay: 0.05,
+              ease: "power2.inOut",
             },
-          });
+          },
+        });
 
-          // Headline slide-in.
+        // Headline slide-in.
+        tl.fromTo(
+          headline,
+          { xPercent: 30, opacity: 0 },
+          { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.5 },
+          0
+        );
+
+        // Hero composite slides in alongside the headline — slightly
+        // slower so it reads as a separate beat. The xPercent tween
+        // is independent from the parallax yPercent tween below so
+        // both layer cleanly on the single transform.
+        if (hero) {
           tl.fromTo(
-            headline,
-            { xPercent: 30, opacity: 0 },
-            { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.5 },
+            hero,
+            { xPercent: 25, opacity: 0 },
+            { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.6 },
             0
           );
-
-          // Hero composite slides in alongside the headline — slightly
-          // slower so it reads as a separate beat. The xPercent tween
-          // is independent from the parallax yPercent tween below so
-          // both layer cleanly on the single transform.
-          if (hero) {
-            tl.fromTo(
-              hero,
-              { xPercent: 25, opacity: 0 },
-              { xPercent: 0, opacity: 1, ease: "power2.out", duration: 0.6 },
-              0
-            );
-          }
-
-          // Track enters from off-stage and lands Step 1.
-          tl.fromTo(
-            track,
-            { x: () => focus.clientWidth },
-            {
-              x: () => offsetForCard(0),
-              ease: "power2.out",
-              duration: 0.5,
-            }
-          );
-          tl.addLabel("step-1");
-          tl.to({}, { duration: 0.3 });
-
-          // Step 2.
-          tl.to(track, {
-            x: () => offsetForCard(1),
-            ease: "power2.inOut",
-            duration: 0.3,
-          });
-          tl.addLabel("step-2");
-          tl.to({}, { duration: 0.3 });
-
-          // Step 3.
-          tl.to(track, {
-            x: () => offsetForCard(2),
-            ease: "power2.inOut",
-            duration: 0.3,
-          });
-          tl.addLabel("step-3");
-          tl.to({}, { duration: 0.3 });
-
-          // Subtle parallax on the hero composite for the entire pinned
-          // duration — yPercent drifts ~6% around the -50 baseline so
-          // it never looks frozen while the cards are panning.
-          if (hero) {
-            tl.fromTo(
-              hero,
-              { yPercent: -53 },
-              { yPercent: -47, ease: "none", duration: 2.5 },
-              0
-            );
-          }
-
-          document.fonts?.ready.then(() => ScrollTrigger.refresh());
         }
+
+        // Track enters from off-stage and lands Step 1.
+        tl.fromTo(
+          track,
+          { x: () => focus.clientWidth },
+          {
+            x: () => offsetForCard(0),
+            ease: "power2.out",
+            duration: 0.5,
+          }
+        );
+        tl.addLabel("step-1");
+        tl.to({}, { duration: 0.3 });
+
+        // Step 2.
+        tl.to(track, {
+          x: () => offsetForCard(1),
+          ease: "power2.inOut",
+          duration: 0.3,
+        });
+        tl.addLabel("step-2");
+        tl.to({}, { duration: 0.3 });
+
+        // Step 3.
+        tl.to(track, {
+          x: () => offsetForCard(2),
+          ease: "power2.inOut",
+          duration: 0.3,
+        });
+        tl.addLabel("step-3");
+        tl.to({}, { duration: 0.3 });
+
+        // Subtle parallax on the hero composite for the entire pinned
+        // duration — yPercent drifts ~6% around the -50 baseline so
+        // it never looks frozen while the cards are panning.
+        if (hero) {
+          tl.fromTo(
+            hero,
+            { yPercent: -53 },
+            { yPercent: -47, ease: "none", duration: 2.5 },
+            0
+          );
+        }
+
+        document.fonts?.ready.then(() => ScrollTrigger.refresh());
+      };
+
+      // Desktop — pinned horizontal pan with the hero composite.
+      mm.add(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        () => buildTimeline(true)
+      );
+
+      // Mobile / tablet — identical pin + horizontal pan, no hero.
+      // ScrollTrigger pins on native touch scroll; ScrollSmoother is
+      // desktop-gated so normalizeScroll never strands the page here.
+      mm.add(
+        "(max-width: 1023px) and (prefers-reduced-motion: no-preference)",
+        () => buildTimeline(false)
       );
     },
     { scope: sectionRef }
@@ -193,10 +194,11 @@ export function StepsSection() {
       <div
         ref={stageRef}
         className="
-          relative mx-auto flex max-w-[1440px] flex-col gap-8 px-6
+          relative mx-auto flex min-h-[100svh] max-w-[1440px] flex-col
+          justify-center gap-8 px-6
           py-[clamp(48px,10vh,120px)]
           sm:gap-10 sm:px-12
-          lg:min-h-[clamp(720px,80vh,840px)] lg:justify-center lg:gap-12
+          lg:min-h-[clamp(720px,80vh,840px)] lg:gap-12
           lg:px-[clamp(48px,16vw,235px)]
         "
       >
@@ -211,46 +213,28 @@ export function StepsSection() {
           </em>
         </h2>
 
-        {/* Focus viewport.
-
-            < lg (mobile / tablet): a native horizontal swipe carousel.
-            `overflow-x-auto` + `snap-x snap-mandatory` lets the user
-            flick cards left/right with the finger; the browser handles
-            momentum + snap. Inline-axis padding gives a peek of the
-            neighbouring card so the carousel reads as swipeable.
-            `scrollbar-none` (defined in globals.css) hides the bar.
-            No GSAP here, so ScrollSmoother's vertical normalizeScroll
-            never fights this horizontal scroller.
-
-            ≥ lg (desktop): an overflow-clipped one-card-wide mask. GSAP
-            translates `trackRef` on X through Step 1 → 2 → 3. The
-            mobile scroll/snap utilities are stripped at lg so they
-            don't interfere with the GSAP transform. */}
+        {/* Focus viewport — an overflow-clipped one-card-wide mask on
+            every viewport. GSAP translates `trackRef` on X through
+            Step 1 → 2 → 3 while the section is pinned. Full-width on
+            mobile (card is ~82vw so the slide is visible); fixed
+            card-width column on desktop alongside the hero. */}
         <div
           ref={focusRef}
           className="
-            w-full
-            snap-x snap-mandatory scroll-px-6 overflow-x-auto scrollbar-none
-            sm:scroll-px-12
-            lg:h-auto lg:w-[clamp(280px,30vw,460px)] lg:max-w-[460px]
-            lg:snap-none lg:overflow-hidden lg:scroll-px-0
+            w-full overflow-hidden
+            lg:w-[clamp(280px,30vw,460px)] lg:max-w-[460px]
           "
         >
           <div
             ref={trackRef}
             className="
-              flex w-max gap-8 px-6 will-change-transform
-              sm:gap-10 sm:px-12
-              lg:w-auto lg:gap-[80px] lg:px-0
+              flex gap-8 will-change-transform
+              sm:gap-10
+              lg:gap-[80px]
             "
           >
             {steps.map((s) => (
-              <div
-                key={s.number}
-                className="shrink-0 snap-center snap-always lg:snap-align-none"
-              >
-                <StepCard {...s} />
-              </div>
+              <StepCard key={s.number} {...s} />
             ))}
           </div>
         </div>
