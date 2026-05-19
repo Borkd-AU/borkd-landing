@@ -58,7 +58,7 @@ On mobile, the same root layer hosts a **small fixed-size SVG** (no viewBox sync
 - `barkTimelineRef: { current: gsap.core.Timeline | null }` — set to the active bark timeline at the start of the bark-fire callback; nulled in the timeline's `onComplete`. Used by `* → PARKED` and `* → PAUSED_INPUT` transitions to kill an in-flight bark so it doesn't `onComplete → transition('IDLE')` and resurrect a parked dog.
 - `sniffTimelineRef: { current: gsap.core.Timeline | null }` — set when entering `SNIFFING`; nulled when leaving. Used by `SNIFFING → BARKING` and other exits from `SNIFFING` to kill the loop with a return-to-baseline.
 
-Effect cleanup runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)` + `pendingTimers.clear()` + `delete (window as any).__borkdDog`.
+Effect cleanup runs `gsap.ticker.remove(tick)` + `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)` + `pendingTimers.clear()` + `delete (window as any).__borkdDog`. The ticker removal is **explicit and required** — `gsap.context()` does NOT auto-unregister ticker callbacks (it only manages tweens/timelines); ticker is a separate global system per GSAP docs.
 
 **`pendingTimers` invariants (must hold throughout):**
 - Every `setTimeout()` created by CursorDog code adds its handle to `pendingTimers` on creation.
@@ -80,6 +80,7 @@ useEffect(() => {
     stateMachineSetup()
   }, rootRef.current!)
   return () => {
+    gsap.ticker.remove(tick)            // EXPLICIT — gsap.context does NOT cover ticker
     ctx.revert()
     controller.abort()
     pendingTimers.forEach(clearTimeout)
@@ -171,9 +172,9 @@ The constructor goes through `safeSet` to guard initial null. The returned sette
 
 **Lifecycle (the load-bearing argument that the setters are safe post-revert):**
 
-The per-frame `RAF tick` is registered via `gsap.ticker.add(tick)` **inside** the `gsap.context()` callback (alongside the quickTo construction). `ctx.revert()` automatically unregisters this ticker callback. Therefore, after `ctx.revert()` runs in the cleanup function, the `tick` function **is not called at all** — `quickToX` / `quickToY` are never invoked post-revert. The setters' post-revert behavior is moot because they are never reached. The `if (quickToX && quickToY)` null check inside `tick` is only for the brief window during mount before the context callback has run.
+The per-frame `RAF tick` is registered via `gsap.ticker.add(tick)` **inside** the `gsap.context()` callback (alongside the quickTo construction). **The cleanup function MUST explicitly call `gsap.ticker.remove(tick)` BEFORE `ctx.revert()`** — `gsap.context()` does not auto-manage ticker registrations (it only captures tweens/timelines per GSAP docs). With the explicit removal in place, the `tick` function stops firing immediately on cleanup, so `quickToX` / `quickToY` are never called post-cleanup. The `if (quickToX && quickToY)` null check inside `tick` is only for the brief window during mount before the context callback has run.
 
-This avoids depending on undocumented GSAP behavior. The guarantee comes from `gsap.ticker.add()` + `ctx.revert()`'s contract (documented), not from "calling a stale quickTo is safe."
+The guarantee comes from `gsap.ticker.remove(tick)` being called explicitly in cleanup (documented GSAP API), not from any auto-cleanup behavior. **Forgetting the `gsap.ticker.remove` call would leak a post-unmount tick** — flag this prominently in implementation review.
 
 **Refs exposed by the SVG components:**
 
@@ -217,7 +218,7 @@ type DogState =
 | `PAUSED_INPUT` | `focusout` of last text input (debounced one RAF; re-check `document.activeElement`) | `FOLLOWING` | reschedule bark; resume follow |
 | any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | same side effects in the same order as the `pointerleave → PARKED` row above (kill bark timeline → kill sniff timeline → clearBark → gsap.set baseline → trot offscreen + fade) |
 | `PARKED` | `visibilitychange → visible` | `IDLE` | reset `lastMoveAt = now`; reschedule bark |
-| any | matchMedia mode flip | `DISABLED` → remount | full `ctx.revert() + ac.abort() + clearTimers()`; React re-keys on mode |
+| any | matchMedia mode flip | `DISABLED` → remount | full cleanup (`gsap.ticker.remove(tick) + ctx.revert() + ac.abort() + clearTimers()`); React re-keys on mode |
 
 The `transition(next, reason?): boolean` helper:
 - **Signature:** returns `true` if the transition was accepted and applied; `false` if rejected (invalid edge or duplicate state).
@@ -266,7 +267,7 @@ The bark timeline's `onComplete` callback calls `transition('IDLE')`, which then
 
 **Per-frame data flow** (desktop, `FOLLOWING`):
 
-The `tick` function is registered via `gsap.ticker.add(tick)` inside the `gsap.context()` callback. `ctx.revert()` automatically unregisters it, so the tick stops cleanly on unmount/mode-flip. This means the data flow loop below cannot fire after `ctx.revert()` — no need to guard `quickToX`/`quickToY` post-revert.
+The `tick` function is registered via `gsap.ticker.add(tick)` inside the `gsap.context()` callback. **Cleanup must explicitly call `gsap.ticker.remove(tick)` before `ctx.revert()`** — GSAP context does not auto-manage ticker registrations. Once explicitly removed, the tick stops firing on unmount/mode-flip, so the data flow loop below cannot fire post-cleanup; no need to guard `quickToX`/`quickToY` for post-revert calls.
 
 ```
 pointermove (event):
@@ -402,7 +403,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 ```
 
-**Dev hook teardown:** Effect cleanup (the same one that runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)`) **also** runs `delete (window as any).__borkdDog`. This is the operation that makes acceptance criterion #7's `window.__borkdDog === undefined` post-teardown check possible.
+**Dev hook teardown:** Effect cleanup (the same one that runs `gsap.ticker.remove(tick)` + `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)` + `pendingTimers.clear()`) **also** runs `delete (window as any).__borkdDog`. This is the operation that makes acceptance criterion #7's `window.__borkdDog === undefined` post-teardown check possible.
 
 This makes acceptance criteria deterministically verifiable in DevTools console without waiting on random timers.
 
