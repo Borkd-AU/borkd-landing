@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { preload } from "react-dom";
 
 /**
  * Two hero variants from the Figma file. Both use the same shared parts
@@ -118,6 +119,23 @@ export function SiteHeaderAlt() {
   //   • Desktop (≥sm): the original Figma 1440×859 frame, expressed as
   //     percentage coordinates so it scales fluidly. Capped to 100svh
   //     so bottom-anchored elements never clip on shorter viewports.
+
+  // The two character SVGs are the hero's largest contentful paint.
+  // `next/image` passes SVGs through unoptimized and its `priority`
+  // prop did NOT emit a high-priority preload for them — a Slow-4G
+  // trace showed girl-2.svg as the LCP element, queued ~574ms late at
+  // initial priority "Low", which is the blank-hero-then-late-pop the
+  // user reported. Emitting an explicit React DOM preload from this
+  // server component writes `<link rel=preload fetchpriority=high>`
+  // into the SSR HTML so the browser's preload scanner fetches them
+  // before any JS runs. SVGs aren't transformed by the image loader so
+  // the public path is the exact request URL.
+  preload("/images/girl-2.svg", { as: "image", fetchPriority: "high" });
+  preload("/images/golden-retriever.svg", {
+    as: "image",
+    fetchPriority: "high",
+  });
+
   return (
     <header className="relative isolate w-full overflow-hidden bg-background-brand">
       <div className="relative mx-auto h-[100svh] min-h-[640px] w-full lg:h-auto lg:min-h-0 lg:max-h-[100svh] lg:[aspect-ratio:1440/859]">
