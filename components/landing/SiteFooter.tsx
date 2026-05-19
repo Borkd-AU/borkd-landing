@@ -3,8 +3,13 @@ import Link from "next/link";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
+  // pt-0: the gap above the divider is owned entirely by the
+  // WaitlistSection's pb so it matches the gap *above* "Sydney first"
+  // (Steps end → title). Adding footer pt on top of that pb made the
+  // bottom whitespace ~1.75× the top. pb-12 keeps the page's final
+  // breathing room.
   return (
-    <footer className="w-full bg-background-brand px-6 py-12 sm:px-12 md:px-[235px]">
+    <footer className="w-full bg-background-brand px-6 pt-0 pb-12 sm:px-12 md:px-[235px]">
       <div className="mx-auto flex max-w-[1205px] flex-col items-center gap-8 border-t border-border-muted pt-12">
         <p className="text-center font-display italic text-content-secondary text-lg sm:text-xl">
           Good places, found.
