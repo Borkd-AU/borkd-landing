@@ -167,7 +167,13 @@ if (quickToX && quickToY) {
 }
 ```
 
-The constructor goes through `safeSet` to guard initial null. The returned setters do **not** go through `safeSet` per frame — GSAP captures the target at construction time, so the setter writes to that captured element directly. Lifecycle: `ctx.revert()` kills the underlying tween + setter on unmount; calling a setter after revert is a GSAP no-op. The `if (quickToX && ...)` null check guards the case where mount hasn't yet completed (first RAF before context callback ran).
+The constructor goes through `safeSet` to guard initial null. The returned setters do **not** go through `safeSet` per frame — GSAP captures the target at construction time, so the setter writes to that captured element directly.
+
+**Lifecycle (the load-bearing argument that the setters are safe post-revert):**
+
+The per-frame `RAF tick` is registered via `gsap.ticker.add(tick)` **inside** the `gsap.context()` callback (alongside the quickTo construction). `ctx.revert()` automatically unregisters this ticker callback. Therefore, after `ctx.revert()` runs in the cleanup function, the `tick` function **is not called at all** — `quickToX` / `quickToY` are never invoked post-revert. The setters' post-revert behavior is moot because they are never reached. The `if (quickToX && quickToY)` null check inside `tick` is only for the brief window during mount before the context callback has run.
+
+This avoids depending on undocumented GSAP behavior. The guarantee comes from `gsap.ticker.add()` + `ctx.revert()`'s contract (documented), not from "calling a stale quickTo is safe."
 
 **Refs exposed by the SVG components:**
 
@@ -203,22 +209,22 @@ type DogState =
 | `IDLE` | pointermove | `FOLLOWING` | update `lastMoveAt = now` (set in the pointermove handler, *before* `transition()` is called — see data flow below) |
 | `FOLLOWING` | RAF tick: `now - lastMoveAt > SNIFF_AFTER_MS` | `SNIFFING` | start sniff loop |
 | `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) |
-| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | callback nulls `barkTimerHandle` + removes from `pendingTimers` (first statement); **if previous state was `SNIFFING`, also `sniffTimelineRef.current?.kill()` + 100ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) and null `sniffTimelineRef`**; then constructs bark timeline (~780ms), stores it in `barkTimelineRef.current` |
+| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | **Side effects in order: (1) callback nulls `barkTimerHandle` + removes its captured handle from `pendingTimers` (first statement); (2) if previous state was `SNIFFING`, `sniffTimelineRef.current?.kill()` + `gsap.set()` `dogRef.y → 0`, `headRef` rotation → 0 instantly + null `sniffTimelineRef` (instant set, not tween — bark is about to animate `headRef`, can't compete with a baseline-restore tween); (3) call `transition('BARKING')`; (4) if and only if the transition was accepted (state is now `BARKING`), construct the bark timeline (~780ms) and store it in `barkTimelineRef.current`.** The accept-check guards against races where state moved to `DISABLED` between steps 2 and 3, preventing an orphaned timeline outside the gsap.context lifecycle. |
 | `BARKING` | timeline ends | `IDLE` | reschedule bark in `random(BARK_MIN_MS, BARK_MAX_MS)` |
-| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | trot offscreen + fade; `clearBark()` (timer); `sniffTimelineRef.current?.kill()` + null it; **`barkTimelineRef.current?.kill()` + 100ms return-to-baseline tween (`headRef` rotation → 0, `shoutRef` opacity → 0) + null it** — prevents the bark `onComplete` from firing `transition('IDLE')` after the dog has parked |
+| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | **Side effects run in this order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` head/shout/dog.y to baseline *instantly* (no tween — avoids racing the trot for `dogRef` ownership); (5) trot dog x → `innerWidth + 32` over 600ms (`power2.in`) + fade opacity → `PARK_FADE_OPACITY`.** Kill-before-trot order prevents bark `onComplete` from firing `transition('IDLE')` after parking; `gsap.set()` precedence rule prevents the sniff-baseline-restore tween from competing with the trot tween for `dogRef` writes. |
 | `PARKED` | `pointerenter` on `<html>` | `IDLE` | reschedule bark (guarded: only if no pending bark timer) |
-| any except `DISABLED` / `PAUSED_INPUT` / `PARKED` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | freeze position; `clearBark()` (timer); `sniffTimelineRef.current?.kill()` + 150ms return-to-baseline + null it; `barkTimelineRef.current?.kill()` + 100ms return-to-baseline (`headRef` rotation → 0, `shoutRef` opacity → 0) + null it — covers entry from `BARKING` mid-animation when user clicks into the form |
+| any except `DISABLED` / `PAUSED_INPUT` / `PARKED` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | **Side effects in order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` head/shout/dog.y to baseline instantly — dog stays at its current `dogRef.x` position (the "freeze" intent).** Same kill-before-set order as PARKED; instant `gsap.set` (not tween) for baseline avoids competing animations since the dog is meant to be motionless during input. Covers entry from `BARKING` mid-animation. |
 | `PAUSED_INPUT` | `focusout` of last text input (debounced one RAF; re-check `document.activeElement`) | `FOLLOWING` | reschedule bark; resume follow |
-| any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | same side effects as the `pointerleave → PARKED` row above (trot offscreen + fade; `clearBark()`; kill in-flight `sniffTimelineRef` and `barkTimelineRef` with baseline restore; null both refs) |
+| any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | same side effects in the same order as the `pointerleave → PARKED` row above (kill bark timeline → kill sniff timeline → clearBark → gsap.set baseline → trot offscreen + fade) |
 | `PARKED` | `visibilitychange → visible` | `IDLE` | reset `lastMoveAt = now`; reschedule bark |
 | any | matchMedia mode flip | `DISABLED` → remount | full `ctx.revert() + ac.abort() + clearTimers()`; React re-keys on mode |
 
-The `transition(next, reason?)` helper enforces:
-- Valid edges from the table (otherwise dev warning + no-op)
-- Reject duplicate target state (no-op)
-- All scheduling/clearing of bark and sniff is funneled through this helper
+The `transition(next, reason?): boolean` helper:
+- **Signature:** returns `true` if the transition was accepted and applied; `false` if rejected (invalid edge or duplicate state).
+- **Synchrony contract (load-bearing):** when accepted, `transition()` updates `stateRef.current = next` **synchronously, before running any side effects from the transition row, before returning, and before any other code path can observe the new value**. This is what makes the bark `onComplete` defensive check (`if (stateRef.current === 'BARKING') ...`) load-bearing — it relies on the previous `transition('BARKING')` having already written the ref. Implementer note: do not defer the ref write into a microtask or scheduler.
+- **Enforces:** valid edges from the table (otherwise dev warning + return `false`); rejects duplicate target state (return `false`); funnels all scheduling/clearing of bark and sniff through itself.
 
-**Same-state transitions are permitted no-ops, not invalid edges.** The most common case is `transition('FOLLOWING')` on every `pointermove` while already in `FOLLOWING`: this is **not** a dev warning, just a silent no-op via the duplicate-target rule. The pointer handler's `lastMoveAt = performance.now()` runs *before* `transition()` is called and is the only observable effect of continued movement while in `FOLLOWING`. Implementer note: the "valid edges from the table" check should not reject same-state transitions; only edges that don't appear in any row (with any source state) are illegal.
+**Same-state transitions are permitted no-ops, not invalid edges.** The most common case is `transition('FOLLOWING')` on every `pointermove` while already in `FOLLOWING`: this is **not** a dev warning, just a silent no-op via the duplicate-target rule (returns `false`, callers don't need to check). The pointer handler's `lastMoveAt = performance.now()` runs *before* `transition()` is called and is the only observable effect of continued movement while in `FOLLOWING`. Implementer note: the "valid edges from the table" check should not reject same-state transitions; only edges that don't appear in any row (with any source state) are illegal.
 
 **Named scheduling call sites** (in `useDogStateMachine`):
 
@@ -260,13 +266,15 @@ The bark timeline's `onComplete` callback calls `transition('IDLE')`, which then
 
 **Per-frame data flow** (desktop, `FOLLOWING`):
 
+The `tick` function is registered via `gsap.ticker.add(tick)` inside the `gsap.context()` callback. `ctx.revert()` automatically unregisters it, so the tick stops cleanly on unmount/mode-flip. This means the data flow loop below cannot fire after `ctx.revert()` — no need to guard `quickToX`/`quickToY` post-revert.
+
 ```
 pointermove (event):
   targetRef       = { x: clientX, y: clientY }    // raw, unclamped
   lastMoveAt      = performance.now()
   transition('FOLLOWING')
 
-RAF tick (every frame, dt from GSAP ticker):
+RAF tick (registered via gsap.ticker.add; dt from GSAP ticker):
   // Wake-up guard
   if (now - lastFrameAt > RAF_WAKE_THRESHOLD_MS) {
     lastFrameAt = now
