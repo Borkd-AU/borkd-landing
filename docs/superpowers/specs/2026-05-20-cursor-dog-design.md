@@ -109,7 +109,13 @@ function safeSet<T extends Element>(
 }
 ```
 
-All GSAP writes and timeline construction sites that touch a CursorDog ref go through this. Callers pass a function that performs the actual `gsap.to(el, ...)` or `gsap.timeline().to(el, ...)`. If the ref has unmounted, the closure is never invoked — no inert timelines, no null targets.
+All GSAP writes that touch a CursorDog ref go through this. Callers pass a function that performs the actual `gsap.to(el, ...)` or `gsap.timeline().to(el, ...)`. If the ref is `null` at call time, the closure is never invoked — no null targets.
+
+**Lifecycle safety is owned separately by `gsap.context()`**, not by `safeSet`:
+- `safeSet` = **null-ref guard at call time** (handles unmount races where a write fires after the ref clears).
+- `gsap.context()` + `ctx.revert()` = **timeline lifecycle** (kills constructed-and-stored timelines on unmount; handles StrictMode double-effect by reverting before recreating).
+
+These are orthogonal. Implementers should not conflate them.
 
 **Refs exposed by the SVG components:**
 
@@ -142,8 +148,7 @@ type DogState =
 | From | Trigger | To | Side effects |
 |---|---|---|---|
 | `DISABLED` | mount + mode resolved | `IDLE` | schedule first bark timer |
-| `IDLE` | pointermove | `FOLLOWING` | update `lastMoveAt = now` |
-| `FOLLOWING` | pointermove (continued) | `FOLLOWING` | update `lastMoveAt = now` |
+| `IDLE` | pointermove | `FOLLOWING` | update `lastMoveAt = now` (set in the pointermove handler, *before* `transition()` is called — see data flow below) |
 | `FOLLOWING` | RAF tick: `now - lastMoveAt > SNIFF_AFTER_MS` | `SNIFFING` | start sniff loop |
 | `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) |
 | `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | callback nulls `barkTimerHandle` + removes from `pendingTimers` (first statement), then runs bark timeline (~780ms) |
@@ -270,7 +275,7 @@ On `SNIFFING → FOLLOWING`, `sniffTimeline.kill()` followed by a 150ms tween re
 |---|---|
 | GSAP plugins / `quickTo` undefined | Module-init guard; controller renders `null` permanently for the session; dev log |
 | `matchMedia` unavailable | `useReactiveMode` falls through to `'disabled'`; guard at hook entry |
-| SVG ref `null` mid-frame (unmount race) | `safeSet(ref, props)` no-ops; covers property writes AND timeline construction |
+| SVG ref `null` mid-frame (unmount race) | `safeSet(ref, fn)` no-ops if ref is null — guards write-time only; timeline lifecycle integrity (StrictMode double-mount, late-firing tweens after unmount) is handled by `gsap.context().revert()` |
 | RAF paused > `RAF_WAKE_THRESHOLD_MS` (5s) | Next RAF: reset `lastFrameAt` AND `lastMoveAt = now`; skip idle check this frame |
 | Listener throws | **No try/catch.** Same posture as GSAP construction — we want to see bugs. Browser logs it; dog may stop; page is unaffected; next mount restarts |
 
@@ -301,12 +306,16 @@ On `SNIFFING → FOLLOWING`, `sniffTimeline.kill()` followed by a 150ms tween re
 if (process.env.NODE_ENV === 'development') {
   ;(window as any).__borkdDog = {
     state: () => stateRef.current,
-    triggerBark: () => transition('BARKING'),
+    // Clear the pending real bark timer first so manual triggers
+    // mirror the production bark-fire path (timer nulled before transition).
+    triggerBark: () => { clearBark(); transition('BARKING') },
     peekBarkTimer: () => barkTimerHandle,
     peekTracking: () => ({ targetRef, slackRef, lastMoveAt }),
   }
 }
 ```
+
+**Dev hook teardown:** Effect cleanup (the same one that runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)`) **also** runs `delete (window as any).__borkdDog`. This is the operation that makes acceptance criterion #7's `window.__borkdDog === undefined` post-teardown check possible.
 
 This makes acceptance criteria deterministically verifiable in DevTools console without waiting on random timers.
 
@@ -373,7 +382,7 @@ Tests the pure transition function in isolation (no GSAP, no DOM):
 |---|---|
 | GSAP plugins / `quickTo` undefined → null fallback | **Code review only.** Fault injection isn't practical manually. Verify the module-init guard exists in `index.tsx`. |
 | `matchMedia` unavailable → 'disabled' | **Code review only.** Verify guard at `useReactiveMode` hook entry. |
-| SVG ref null mid-frame → `safeSet` no-ops | **Code review only.** Verify every `gsap.to` / `gsap.timeline().to` call goes through `safeSet`. |
+| SVG ref null mid-frame → `safeSet` no-ops + `gsap.context()` lifecycle | **Code review only.** Verify (a) every `gsap.to` / `gsap.timeline().to` call goes through `safeSet`, AND (b) all tweens/timelines are constructed inside the component's single `gsap.context()` so `ctx.revert()` kills them on unmount. |
 | RAF paused >5s → wake guard | **Code review + dev-tool spot check.** Open DevTools → Performance → simulate slow main thread > 5s. Verify dog doesn't immediately enter SNIFFING on resume (`__borkdDog.state()` stays in prior state). |
 | Listener throws → silent failure, page intact | **Code review only.** Verify no try/catch wrapping transitions or GSAP calls. |
 | `prefers-reduced-motion: reduce` | Criterion #7 |
