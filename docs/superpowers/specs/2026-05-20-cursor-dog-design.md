@@ -52,15 +52,46 @@ The feature is decorative, non-load-bearing, and must not regress the landing pa
 
 On mobile, the same root layer hosts a **small fixed-size SVG** (no viewBox sync, no leash element).
 
-**Animation engine:** GSAP `quickTo` for the dog's `x/y` transforms. One scoped `gsap.context()` owns every tween and timeline. Non-GSAP lifecycle (event listeners, matchMedia, timer handles) is owned by a single `AbortController` + a `Set<number>` of pending `setTimeout` handles for blanket cleanup. The bark scheduler additionally holds its **own** single `barkTimerHandle` ref (in addition to membership in `pendingTimers`) so that `scheduleBark()` can guard against duplicate scheduling and `peekBarkTimer()` (debug hook) can read it. Effect cleanup runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)`.
+**Animation engine:** GSAP `quickTo` for the dog's `x/y` transforms. One scoped `gsap.context()` owns every tween and timeline. Non-GSAP lifecycle (event listeners, matchMedia, timer handles) is owned by a single `AbortController` + a `Set<number>` of pending `setTimeout` handles for blanket cleanup. The bark scheduler additionally holds its **own** single `barkTimerHandle` ref (in addition to membership in `pendingTimers`) so that `scheduleBark()` can guard against duplicate scheduling and `peekBarkTimer()` (debug hook) can read it.
+
+**In-flight animation refs** (needed for state transitions that interrupt animations):
+- `barkTimelineRef: { current: gsap.core.Timeline | null }` — set to the active bark timeline at the start of the bark-fire callback; nulled in the timeline's `onComplete`. Used by `* → PARKED` and `* → PAUSED_INPUT` transitions to kill an in-flight bark so it doesn't `onComplete → transition('IDLE')` and resurrect a parked dog.
+- `sniffTimelineRef: { current: gsap.core.Timeline | null }` — set when entering `SNIFFING`; nulled when leaving. Used by `SNIFFING → BARKING` and other exits from `SNIFFING` to kill the loop with a return-to-baseline.
+
+Effect cleanup runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)` + `pendingTimers.clear()` + `delete (window as any).__borkdDog`.
 
 **`pendingTimers` invariants (must hold throughout):**
 - Every `setTimeout()` created by CursorDog code adds its handle to `pendingTimers` on creation.
 - Every timer callback's **first** statement deletes its own handle from `pendingTimers`.
 - `clearBark()` deletes the handle from `pendingTimers` AND nulls `barkTimerHandle`.
-- The cleanup function clears `pendingTimers` blanket — by then most handles should already be removed by their callbacks; this catches any in-flight ones.
+- The cleanup function runs `pendingTimers.forEach(clearTimeout)` to cancel any in-flight handles, then `pendingTimers.clear()` to drop the set's references. By then most handles should already be removed by their callbacks; this catches stragglers and frees memory.
 
 This is the only way handles in `pendingTimers` stay consistent with `barkTimerHandle` and with the debug-hook readers.
+
+**Canonical ownership of `gsap.context()`:** Exactly **one** `gsap.context()` exists for the entire CursorDog feature, created by **`index.tsx`'s top-level `useEffect`** scoped to the wrapping `<div data-cursor-dog>` root ref:
+
+```ts
+useEffect(() => {
+  if (mode === 'disabled') return
+  const ctx = gsap.context(() => {
+    // hooks expose setup functions; called inside the context so all
+    // tweens/timelines/quickTo's they create are scoped to this ctx
+    trackerSetup()
+    stateMachineSetup()
+  }, rootRef.current!)
+  return () => {
+    ctx.revert()
+    controller.abort()
+    pendingTimers.forEach(clearTimeout)
+    pendingTimers.clear()
+    delete (window as any).__borkdDog
+  }
+}, [mode])
+```
+
+The hooks (`useCursorTracker`, `useDogStateMachine`) are called at the top of `index.tsx` (React rules); they return setup functions that the controller invokes **inside** the `gsap.context()` callback. This guarantees every GSAP creation — including hook-internal ones — is captured by the same context and reverted in one call.
+
+Hooks **do not** create their own `gsap.context()`. There is one and only one.
 
 **Hydration contract:** Server renders `null`. First client render also returns `null` until `useEffect` resolves the mode via `matchMedia`. ~50-100ms flicker on first paint where the dog is absent — intentional, acceptable for brand polish, documented so nobody "fixes" it with SSR matchMedia hacks.
 
@@ -117,6 +148,27 @@ All GSAP writes that touch a CursorDog ref go through this. Callers pass a funct
 
 These are orthogonal. Implementers should not conflate them.
 
+**`quickTo` is special — once-constructed, called per-frame:**
+
+```ts
+let quickToX: ((v: number) => gsap.core.Tween) | null = null
+let quickToY: ((v: number) => gsap.core.Tween) | null = null
+
+// Construction (once, inside gsap.context() callback) — uses safeSet to guard null ref
+safeSet(dogRef, (el) => {
+  quickToX = gsap.quickTo(el, 'x', { duration: 0.4, ease: 'power3' })
+  quickToY = gsap.quickTo(el, 'y', { duration: 0.4, ease: 'power3' })
+})
+
+// Per-frame call (every RAF tick) — NO safeSet wrapping
+if (quickToX && quickToY) {
+  quickToX(clampedTarget.x)
+  quickToY(clampedTarget.y)
+}
+```
+
+The constructor goes through `safeSet` to guard initial null. The returned setters do **not** go through `safeSet` per frame — GSAP captures the target at construction time, so the setter writes to that captured element directly. Lifecycle: `ctx.revert()` kills the underlying tween + setter on unmount; calling a setter after revert is a GSAP no-op. The `if (quickToX && ...)` null check guards the case where mount hasn't yet completed (first RAF before context callback ran).
+
 **Refs exposed by the SVG components:**
 
 | Ref | Element | Animated by |
@@ -151,13 +203,13 @@ type DogState =
 | `IDLE` | pointermove | `FOLLOWING` | update `lastMoveAt = now` (set in the pointermove handler, *before* `transition()` is called — see data flow below) |
 | `FOLLOWING` | RAF tick: `now - lastMoveAt > SNIFF_AFTER_MS` | `SNIFFING` | start sniff loop |
 | `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) |
-| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | callback nulls `barkTimerHandle` + removes from `pendingTimers` (first statement), then runs bark timeline (~780ms) |
+| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | callback nulls `barkTimerHandle` + removes from `pendingTimers` (first statement); **if previous state was `SNIFFING`, also `sniffTimelineRef.current?.kill()` + 100ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) and null `sniffTimelineRef`**; then constructs bark timeline (~780ms), stores it in `barkTimelineRef.current` |
 | `BARKING` | timeline ends | `IDLE` | reschedule bark in `random(BARK_MIN_MS, BARK_MAX_MS)` |
-| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | trot offscreen + fade; clear sniff & bark timers |
+| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | trot offscreen + fade; `clearBark()` (timer); `sniffTimelineRef.current?.kill()` + null it; **`barkTimelineRef.current?.kill()` + 100ms return-to-baseline tween (`headRef` rotation → 0, `shoutRef` opacity → 0) + null it** — prevents the bark `onComplete` from firing `transition('IDLE')` after the dog has parked |
 | `PARKED` | `pointerenter` on `<html>` | `IDLE` | reschedule bark (guarded: only if no pending bark timer) |
-| `FOLLOWING` / `IDLE` / `SNIFFING` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | freeze position; clear sniff loop with return-to-baseline; **clear bark timer too** |
+| any except `DISABLED` / `PAUSED_INPUT` / `PARKED` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | freeze position; `clearBark()` (timer); `sniffTimelineRef.current?.kill()` + 150ms return-to-baseline + null it; `barkTimelineRef.current?.kill()` + 100ms return-to-baseline (`headRef` rotation → 0, `shoutRef` opacity → 0) + null it — covers entry from `BARKING` mid-animation when user clicks into the form |
 | `PAUSED_INPUT` | `focusout` of last text input (debounced one RAF; re-check `document.activeElement`) | `FOLLOWING` | reschedule bark; resume follow |
-| any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | trot offscreen; clear sniff & bark timers |
+| any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | same side effects as the `pointerleave → PARKED` row above (trot offscreen + fade; `clearBark()`; kill in-flight `sniffTimelineRef` and `barkTimelineRef` with baseline restore; null both refs) |
 | `PARKED` | `visibilitychange → visible` | `IDLE` | reset `lastMoveAt = now`; reschedule bark |
 | any | matchMedia mode flip | `DISABLED` → remount | full `ctx.revert() + ac.abort() + clearTimers()`; React re-keys on mode |
 
@@ -166,18 +218,21 @@ The `transition(next, reason?)` helper enforces:
 - Reject duplicate target state (no-op)
 - All scheduling/clearing of bark and sniff is funneled through this helper
 
+**Same-state transitions are permitted no-ops, not invalid edges.** The most common case is `transition('FOLLOWING')` on every `pointermove` while already in `FOLLOWING`: this is **not** a dev warning, just a silent no-op via the duplicate-target rule. The pointer handler's `lastMoveAt = performance.now()` runs *before* `transition()` is called and is the only observable effect of continued movement while in `FOLLOWING`. Implementer note: the "valid edges from the table" check should not reject same-state transitions; only edges that don't appear in any row (with any source state) are illegal.
+
 **Named scheduling call sites** (in `useDogStateMachine`):
 
 ```ts
 function scheduleBark(): void {
   if (barkTimerHandle != null) return                   // guard against duplicates
   const delay = BARK_MIN_MS + Math.random() * (BARK_MAX_MS - BARK_MIN_MS)
-  barkTimerHandle = window.setTimeout(() => {
-    pendingTimers.delete(barkTimerHandle!)              // invariant: remove on fire
+  const handle = window.setTimeout(() => {
+    pendingTimers.delete(handle)                        // captured const — own handle
     barkTimerHandle = null                              // null before transitioning
     transition('BARKING')
   }, delay)
-  pendingTimers.add(barkTimerHandle)
+  barkTimerHandle = handle
+  pendingTimers.add(handle)
 }
 
 function clearBark(): void {
@@ -187,6 +242,8 @@ function clearBark(): void {
   barkTimerHandle = null
 }
 ```
+
+The local `const handle` in `scheduleBark` matters: it captures the specific timer's identity, so if `barkTimerHandle` is reassigned by another path (e.g., a race where `clearBark` runs and a new `scheduleBark` starts before this callback fires), the callback still removes the right handle from `pendingTimers`.
 
 `scheduleBark()` is the **only** place a bark timer is created. Called from the side-effect block of:
 - `DISABLED → IDLE` (mount: first bark)
@@ -231,10 +288,14 @@ RAF tick (every frame, dt from GSAP ticker):
   slack    = slack * exp(-dt / SLACK_DECAY_TAU_MS) + |velocity| * k
   lastClampedTarget = clampedTarget
 
-  // Render
-  dogPos.x ← quickTo(clampedTarget.x)
-  dogPos.y ← quickTo(clampedTarget.y)
-  leash.d  ← computeLeashPath(cursorPos, dogPos, slack)
+  // Render (quickToX/quickToY are the captured setters from Section 2)
+  if (quickToX && quickToY) {
+    quickToX(clampedTarget.x)
+    quickToY(clampedTarget.y)
+  }
+  safeSet(leashRef, (el) => {
+    el.setAttribute('d', computeLeashPath(cursorPos, dogPos, slack))
+  })
 ```
 
 **Leash path math** (quadratic Bezier; cubic upgrade deferred to visual tuning):
@@ -248,20 +309,38 @@ d = `M${cx},${cy} Q${mx},${ctrlY} ${dx},${dy}`
 
 **Bark timeline** (~780ms total):
 
+Construction stores the timeline in `barkTimelineRef.current` before steps begin. Steps:
+
 1. `headRef` rotate 0 → `BARK_TILT_DEG` (12°) in 150ms (`power2.out`)
 2. `shoutRef` opacity 0 → 1, scale 0.5 → 1 in 80ms
 3. Hold 200ms at peak
 4. `shoutRef` opacity 1 → 0 in 150ms
 5. `headRef` rotate 12° → 0 in 200ms (`power2.in`)
 
+`onComplete` callback (defensive against late completion if `kill()` didn't propagate cleanly):
+
+```ts
+onComplete: () => {
+  barkTimelineRef.current = null
+  if (stateRef.current === 'BARKING') {
+    transition('IDLE')           // normal path: schedules next bark via table side effect
+  }
+  // else: state already moved on (PARKED, PAUSED_INPUT, DISABLED) — do nothing
+}
+```
+
+Two safeguards against PARKED-resurrection: (a) explicit `barkTimelineRef.kill()` in PARKED/PAUSED_INPUT entry transitions cancels the `onComplete`; (b) the state check above absorbs any race where the callback still fires.
+
 **Sniff loop** (~1.5s, repeats while in `SNIFFING`):
+
+Construction stores the timeline in `sniffTimelineRef.current` before steps begin. Steps:
 
 1. `dogRef.y` += 4px, `headRef` rotate to `SNIFF_TILT_DEG` (-6°) in 250ms (`sine.inOut`)
 2. Return in 200ms
 3. Pause 600-1200ms (random)
 4. Repeat, with ±8px x-drift per cycle for visual interest
 
-On `SNIFFING → FOLLOWING`, `sniffTimeline.kill()` followed by a 150ms tween restoring `dogRef.y → 0` and `headRef rotation → 0` to prevent snap.
+On any exit from `SNIFFING` (`SNIFFING → FOLLOWING`, `SNIFFING → BARKING`, `SNIFFING → PARKED`, `SNIFFING → PAUSED_INPUT`, `SNIFFING → DISABLED`): `sniffTimelineRef.current?.kill()` + 100-150ms return-to-baseline tween (`dogRef.y → 0`, `headRef` rotation → 0) + null `sniffTimelineRef.current`. Each individual transition row above specifies its own duration; this paragraph is the canonical "what kill-sniff means" reference.
 
 **Mobile branch:** No tracker. Fixed position bottom-right (24px from each edge). State machine only cycles `IDLE → BARKING → IDLE`. No leash, no sniff. Mounts `MobileDogSvg` (small fixed-size SVG, no viewBox sync).
 
@@ -382,7 +461,7 @@ Tests the pure transition function in isolation (no GSAP, no DOM):
 |---|---|
 | GSAP plugins / `quickTo` undefined → null fallback | **Code review only.** Fault injection isn't practical manually. Verify the module-init guard exists in `index.tsx`. |
 | `matchMedia` unavailable → 'disabled' | **Code review only.** Verify guard at `useReactiveMode` hook entry. |
-| SVG ref null mid-frame → `safeSet` no-ops + `gsap.context()` lifecycle | **Code review only.** Verify (a) every `gsap.to` / `gsap.timeline().to` call goes through `safeSet`, AND (b) all tweens/timelines are constructed inside the component's single `gsap.context()` so `ctx.revert()` kills them on unmount. |
+| SVG ref null mid-frame → `safeSet` no-ops + `gsap.context()` lifecycle | **Code review only.** Verify: (a) every `gsap.to` / `gsap.timeline().to` call AND every `gsap.quickTo` *constructor* call goes through `safeSet`; (b) `quickToX` / `quickToY` returned setters are called per-frame **without** `safeSet` (correct — GSAP captures the target at construction); (c) all tweens / timelines / quickTo's are created inside the single `gsap.context()` in `index.tsx`'s top-level `useEffect`, so `ctx.revert()` kills everything on unmount. |
 | RAF paused >5s → wake guard | **Code review + dev-tool spot check.** Open DevTools → Performance → simulate slow main thread > 5s. Verify dog doesn't immediately enter SNIFFING on resume (`__borkdDog.state()` stays in prior state). |
 | Listener throws → silent failure, page intact | **Code review only.** Verify no try/catch wrapping transitions or GSAP calls. |
 | `prefers-reduced-motion: reduce` | Criterion #7 |
