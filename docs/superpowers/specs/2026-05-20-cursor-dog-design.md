@@ -1,8 +1,8 @@
 # Cursor Dog — Design Spec
 
-**Status:** Approved design, ready for implementation planning
+**Status:** Design draft — asset work (shout-lines SVG) required before implementation
 **Date:** 2026-05-20
-**Author:** Brainstormed with adversarial review by Codex (4 rounds)
+**Author:** Brainstormed with adversarial review by Codex (5 rounds — section-by-section then whole-spec)
 
 ## Summary
 
@@ -54,6 +54,14 @@ On mobile, the same root layer hosts a **small fixed-size SVG** (no viewBox sync
 
 **Animation engine:** GSAP `quickTo` for the dog's `x/y` transforms. One scoped `gsap.context()` owns every tween and timeline. Non-GSAP lifecycle (event listeners, matchMedia, timer handles) is owned by a single `AbortController` + a `Set<number>` of pending `setTimeout` handles for blanket cleanup. The bark scheduler additionally holds its **own** single `barkTimerHandle` ref (in addition to membership in `pendingTimers`) so that `scheduleBark()` can guard against duplicate scheduling and `peekBarkTimer()` (debug hook) can read it. Effect cleanup runs `ctx.revert()` + `controller.abort()` + `pendingTimers.forEach(clearTimeout)`.
 
+**`pendingTimers` invariants (must hold throughout):**
+- Every `setTimeout()` created by CursorDog code adds its handle to `pendingTimers` on creation.
+- Every timer callback's **first** statement deletes its own handle from `pendingTimers`.
+- `clearBark()` deletes the handle from `pendingTimers` AND nulls `barkTimerHandle`.
+- The cleanup function clears `pendingTimers` blanket — by then most handles should already be removed by their callbacks; this catches any in-flight ones.
+
+This is the only way handles in `pendingTimers` stay consistent with `barkTimerHandle` and with the debug-hook readers.
+
 **Hydration contract:** Server renders `null`. First client render also returns `null` until `useEffect` resolves the mode via `matchMedia`. ~50-100ms flicker on first paint where the dog is absent — intentional, acceptable for brand polish, documented so nobody "fixes" it with SSR matchMedia hacks.
 
 ## 2. Components
@@ -77,16 +85,31 @@ components/landing/CursorDog/
 **Constants (`constants.ts`):**
 
 ```ts
-export const MAX_STRETCH = 240          // px — max leash length (clamp)
-export const SNIFF_AFTER_MS = 3000      // ms cursor stationary before sniff
-export const BARK_MIN_MS = 20000        // ms — random schedule lower bound
-export const BARK_MAX_MS = 40000        // ms — random schedule upper bound
-export const BARK_TILT_DEG = 12         // bark head rotation
-export const SNIFF_TILT_DEG = -6        // sniff head dip
-export const SLACK_DECAY_TAU_MS = 500   // exponential time constant for slack
+export const MAX_STRETCH = 240             // px — max leash length (clamp)
+export const SNIFF_AFTER_MS = 3000         // ms cursor stationary before sniff
+export const BARK_MIN_MS = 20000           // ms — random schedule lower bound
+export const BARK_MAX_MS = 40000           // ms — random schedule upper bound
+export const BARK_TILT_DEG = 12            // bark head rotation
+export const SNIFF_TILT_DEG = -6           // sniff head dip
+export const SLACK_DECAY_TAU_MS = 500      // exponential time constant for slack
+export const SLACK_VELOCITY_GAIN_K = 0.01  // velocity-to-slack gain; tune visually
 export const RAF_WAKE_THRESHOLD_MS = 5000  // RAF pause > this → treat as wake
-export const PARK_FADE_OPACITY = 0.4    // dog opacity when parked
+export const PARK_FADE_OPACITY = 0.4       // dog opacity when parked
+export const ENTRY_TROT_MS = 600           // first-appearance trot duration
 ```
+
+**`safeSet` helper (in `index.tsx` or shared util):**
+
+```ts
+function safeSet<T extends Element>(
+  ref: RefObject<T>,
+  apply: (el: T) => void,
+): void {
+  if (ref.current != null) apply(ref.current)
+}
+```
+
+All GSAP writes and timeline construction sites that touch a CursorDog ref go through this. Callers pass a function that performs the actual `gsap.to(el, ...)` or `gsap.timeline().to(el, ...)`. If the ref has unmounted, the closure is never invoked — no inert timelines, no null targets.
 
 **Refs exposed by the SVG components:**
 
@@ -123,7 +146,7 @@ type DogState =
 | `FOLLOWING` | pointermove (continued) | `FOLLOWING` | update `lastMoveAt = now` |
 | `FOLLOWING` | RAF tick: `now - lastMoveAt > SNIFF_AFTER_MS` | `SNIFFING` | start sniff loop |
 | `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) |
-| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | run bark timeline (~780ms) |
+| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | callback nulls `barkTimerHandle` + removes from `pendingTimers` (first statement), then runs bark timeline (~780ms) |
 | `BARKING` | timeline ends | `IDLE` | reschedule bark in `random(BARK_MIN_MS, BARK_MAX_MS)` |
 | any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | trot offscreen + fade; clear sniff & bark timers |
 | `PARKED` | `pointerenter` on `<html>` | `IDLE` | reschedule bark (guarded: only if no pending bark timer) |
@@ -137,6 +160,41 @@ The `transition(next, reason?)` helper enforces:
 - Valid edges from the table (otherwise dev warning + no-op)
 - Reject duplicate target state (no-op)
 - All scheduling/clearing of bark and sniff is funneled through this helper
+
+**Named scheduling call sites** (in `useDogStateMachine`):
+
+```ts
+function scheduleBark(): void {
+  if (barkTimerHandle != null) return                   // guard against duplicates
+  const delay = BARK_MIN_MS + Math.random() * (BARK_MAX_MS - BARK_MIN_MS)
+  barkTimerHandle = window.setTimeout(() => {
+    pendingTimers.delete(barkTimerHandle!)              // invariant: remove on fire
+    barkTimerHandle = null                              // null before transitioning
+    transition('BARKING')
+  }, delay)
+  pendingTimers.add(barkTimerHandle)
+}
+
+function clearBark(): void {
+  if (barkTimerHandle == null) return
+  window.clearTimeout(barkTimerHandle)
+  pendingTimers.delete(barkTimerHandle)
+  barkTimerHandle = null
+}
+```
+
+`scheduleBark()` is the **only** place a bark timer is created. Called from the side-effect block of:
+- `DISABLED → IDLE` (mount: first bark)
+- `BARKING → IDLE` (timeline end, reschedule)
+- `PARKED → IDLE` (pointerenter or visibilitychange visible)
+- `PAUSED_INPUT → FOLLOWING` (focusout)
+
+`clearBark()` is called from the side-effect block of:
+- `* → PARKED` (pointerleave or visibilitychange hidden)
+- `* → PAUSED_INPUT` (focusin on text input)
+- `* → DISABLED` (mode flip; handled by cleanup but explicit for safety)
+
+The bark timeline's `onComplete` callback calls `transition('IDLE')`, which then calls `scheduleBark()` via the table's side-effect block.
 
 **Per-frame data flow** (desktop, `FOLLOWING`):
 
@@ -272,10 +330,9 @@ This makes acceptance criteria deterministically verifiable in DevTools console 
 
 - `next build && next start`; Chrome desktop; DevTools Performance → CPU **4× throttle** (ship gate).
 - Scroll into StepsSection; move cursor across while pinned pan runs; record 5s.
-- **Pass requires ALL of:**
+- **Pass requires both:**
   - Median ≥ 55 fps
-  - p95 frame time ≤ 24ms
-  - **Zero frames > 33ms**
+  - **Zero frames > 33ms** (max-frame bound subsumes the p95 case for a 5s/300-frame sample)
 - Fail → switch follow loop from `quickTo` to manual RAF lerp (hybrid D); re-run.
 - 6× CPU throttle = stress budget; log only, non-blocking.
 
@@ -310,6 +367,24 @@ Tests the pure transition function in isolation (no GSAP, no DOM):
 - VoiceOver: root carries `aria-hidden="true"`; no announcements
 - Keyboard nav: tab through interactive elements; `PAUSED_INPUT` engages on text inputs; no focus trap
 
+**Section 4 ↔ Section 5 coverage matrix** (every Section 4 claim is either tested or explicitly waived):
+
+| Section 4 claim | Verified by |
+|---|---|
+| GSAP plugins / `quickTo` undefined → null fallback | **Code review only.** Fault injection isn't practical manually. Verify the module-init guard exists in `index.tsx`. |
+| `matchMedia` unavailable → 'disabled' | **Code review only.** Verify guard at `useReactiveMode` hook entry. |
+| SVG ref null mid-frame → `safeSet` no-ops | **Code review only.** Verify every `gsap.to` / `gsap.timeline().to` call goes through `safeSet`. |
+| RAF paused >5s → wake guard | **Code review + dev-tool spot check.** Open DevTools → Performance → simulate slow main thread > 5s. Verify dog doesn't immediately enter SNIFFING on resume (`__borkdDog.state()` stays in prior state). |
+| Listener throws → silent failure, page intact | **Code review only.** Verify no try/catch wrapping transitions or GSAP calls. |
+| `prefers-reduced-motion: reduce` | Criterion #7 |
+| Touch-only → mobile branch | Criterion #8 |
+| `@media print` → display none | **Manual:** Cmd+P / Print Preview on borkd.app desktop build — dog must not appear in the preview. |
+| Cross-origin iframe → dog freezes; smooth catch-up on exit | Criterion #10 (Instagram embed = current cross-origin instance; behavior generalizes) |
+| Multi-input focus tab-cycle → debounced exit | **Manual:** Tab through the waitlist form with keyboard — `peekBarkTimer()` and `state()` checked between fields; no bark fired during cycle. |
+| Ctrl+scroll zoom → viewBox resyncs | **Manual:** Ctrl+`+` / Ctrl+`-` while dog is visible — leash and dog remain coherent. |
+| Modal / native context menu → dog still tracks | **Code review only** (no modals or native context menus in current app surface). |
+| Mode flip → full teardown, no leaked timers | **Manual + dev hook:** Toggle reduce-motion on/off 5 times rapidly; verify `window.__borkdDog === undefined` immediately after each "on" toggle; verify `peekBarkTimer()` is a fresh handle (not null and not the previous one) after each "off" toggle. |
+
 **Explicitly NOT tested:**
 
 - Animation timing / position assertions (non-deterministic per frame)
@@ -322,11 +397,27 @@ Tests the pure transition function in isolation (no GSAP, no DOM):
 - 6× CPU throttle stress budget failure → log, tune later
 - User reports of bark annoyance → reconsider dismiss UI (currently rejected)
 
-## Open items for implementation
+## Initial appearance UX
 
-- **Visual tuning of leash curve** at long diagonal stretches: quadratic Bezier may look stiff. Cubic upgrade is a 1-line change if needed — defer the call to actual on-screen review.
-- **Shout-lines SVG asset:** needs design pass. Style should match the existing single-stroke logo (line art, no fills). Add to `vector6-logo.svg` or a sibling asset.
-- **Initial dog appearance:** the dog's `<g>` starts at `opacity: 0`. On the first `pointermove` after mount, the dog's position is set to the cursor coordinates and opacity tweens to 1 over 200ms (`power2.out`). The wrapping `<div>` is in the DOM the whole time (so `pointerleave` listeners attach correctly); only the dog is invisible until first pointer activity.
+A leashed dog doesn't materialize at the cursor — it walks in from somewhere. On first pointer activity after mount:
+
+1. Dog's `<g>` starts at `opacity: 0`, positioned at the **right edge** of the viewport (`x = innerWidth + 32, y = innerHeight * 0.6`) — offscreen by ~32px.
+2. On first `pointermove`, opacity tweens 0 → 1 over 150ms (`power2.out`) while `quickTo` begins driving the dog toward the cursor.
+3. The `quickTo` `duration` is temporarily increased to `ENTRY_TROT_MS` (600ms) for the first transit only, then snaps back to its normal short value (~0.4s).
+4. The leash path doesn't render until opacity > 0.5 (avoids drawing a leash to an invisible dog).
+
+This makes the entry coherent with the leash metaphor and avoids the "physically impossible materialize at cursor" issue.
+
+The wrapping `<div>` is in the DOM the whole time after mount (so `pointerleave` listeners attach correctly); only the dog `<g>` is invisible until first pointer activity.
+
+## Required before implementation
+
+- **Shout-lines SVG asset:** Design pass needed. Style should match the existing single-stroke logo — line art, no fills, similar stroke weight (`1.95087` to match). Recommend ~3-5 short outward-radiating strokes from the upper-right of the dog mark. Add as a new `<g>` inside `vector6-logo.svg`, or create a sibling asset `vector6-shout.svg`. **This is a blocker for impl** — without the asset there's nothing for `shoutRef` to animate.
+
+## Open items (in-impl tuning, non-blocking)
+
+- **Visual tuning of leash curve** at long diagonal stretches: quadratic Bezier may look stiff. Cubic upgrade is a 1-line change if needed — defer the call to on-screen review during impl.
+- **`SLACK_VELOCITY_GAIN_K`** starting value (0.01) is a guess; tune visually so leash droop feels right.
 
 ## Files touched
 
@@ -342,3 +433,4 @@ Tests the pure transition function in isolation (no GSAP, no DOM):
 | `components/landing/CursorDog/useDogStateMachine.test.ts` | New |
 | `app/layout.tsx` | Edit — add `dynamic()` import + idle-callback mount |
 | `app/globals.css` | Edit — add `@media print { [data-cursor-dog] { display: none } }` |
+| `public/images/illustration/vector6-logo.svg` **or** new `vector6-shout.svg` | New asset / edit — add shout-lines `<g>` (design-pass blocker) |
