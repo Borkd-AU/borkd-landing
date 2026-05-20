@@ -2,7 +2,7 @@
 
 **Status:** Design draft — asset work (shout-lines SVG) required before implementation
 **Date:** 2026-05-20
-**Author:** Brainstormed with adversarial review by Codex (5 rounds — section-by-section then whole-spec)
+**Author:** Brainstormed with adversarial review by Codex (11 invocations: 1 approach review + 4 section-level reviews + 6 whole-spec rounds, final verdict "READY FOR HANDOFF")
 
 ## Summary
 
@@ -49,6 +49,8 @@ The feature is decorative, non-load-bearing, and must not regress the landing pa
   </svg>
 </div>
 ```
+
+**`shoutRef` hierarchy (deliberate):** `shoutRef` is a sibling of `headRef`, **not a child**. Consequence: the head-tilt rotation in the bark timeline applies only to `headRef` — the shout lines stay axis-aligned during the 12° tilt. This is intentional. Nesting `shoutRef` inside `headRef` would rigid-rotate the entire bark burst with the head, which at 12° reads as the shout lines "swinging" with the dog and breaks the cartoon convention of bark lines as ambient sound indicators. Implementation must preserve sibling order; do not "fix" by reparenting.
 
 On mobile, the same root layer hosts a **small fixed-size SVG** (no viewBox sync, no leash element).
 
@@ -321,7 +323,7 @@ d = `M${cx},${cy} Q${mx},${ctrlY} ${dx},${dy}`
 Construction stores the timeline in `barkTimelineRef.current` before steps begin. Steps:
 
 1. `headRef` rotate 0 → `BARK_TILT_DEG` (12°) in 150ms (`power2.out`)
-2. `shoutRef` opacity 0 → 1, scale 0.5 → 1 in 80ms
+2. `shoutRef` opacity 0 → 1, scale 0.5 → 1 in 80ms — **the scale tween MUST set `svgOrigin: "29.7 7.4"`** (the centroid of the four shout-line origin points in `vector6-shout.svg`'s SVG coordinate space). Without `svgOrigin`, GSAP's SVG `<g>` scale defaults to the parent SVG's `(0,0)` and the strokes will appear to grow from the upper-left corner of the viewport rather than popping from near the dog's mouth — load-bearing for the bark to read correctly. Flag prominently in implementation review.
 3. Hold 200ms at peak
 4. `shoutRef` opacity 1 → 0 in 150ms
 5. `headRef` rotate 12° → 0 in 200ms (`power2.in`)
@@ -509,7 +511,7 @@ The wrapping `<div>` is in the DOM the whole time after mount (so `pointerleave`
 
 ## Required before implementation
 
-- **Shout-lines SVG asset:** Design pass needed. Style should match the existing single-stroke logo — line art, no fills, similar stroke weight (`1.95087` to match). Recommend ~3-5 short outward-radiating strokes from the upper-right of the dog mark. Add as a new `<g>` inside `vector6-logo.svg`, or create a sibling asset `vector6-shout.svg`. **This is a blocker for impl** — without the asset there's nothing for `shoutRef` to animate.
+- ~~**Shout-lines SVG asset:** Design pass needed.~~ **DONE** — created at `public/images/illustration/vector6-shout.svg` (sibling file; `vector6-logo.svg` left untouched since it's referenced as a static `<img>` by SiteHeader and SiteFooter). 4 short outward-radiating strokes from focal `(29.7, 7.4)` in the logo's coordinate space, matching the logo's `stroke-width="1.95087"`, `stroke-linecap="round"`, no fill, color via `var(--stroke-0, white)`. Codex adversarial review pass: asset geometry clears the logo stroke at all four origins; SVG itself is shippable. Same review surfaced two spec-level defects (now patched above): explicit `svgOrigin` requirement on the bark-timeline scale tween, and the deliberate `shoutRef`/`headRef` sibling hierarchy.
 
 ## Open items (in-impl tuning, non-blocking)
 
