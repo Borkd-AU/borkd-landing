@@ -211,6 +211,49 @@ export function StepsSection() {
           lg:px-[clamp(48px,16vw,235px)]
         "
       >
+        {/* Mobile-only hero composite — mirrors the desktop right-column
+            card so phones don't miss the field/man+jojo visual. Sized
+            to match the QuoteSection card above for visual consistency
+            (same aspect, same max-w clamps). Positioned ABOVE the
+            headline on mobile so it leads the section visually; the
+            desktop instance further down stays absolute-positioned in
+            the right column and is GSAP-driven. This static mobile
+            twin has no GSAP attached so it never fights the timeline.
+            Because it's now full-width, the mobile stage drops its
+            100svh min-h so the content flows to its natural height;
+            GSAP pin still channels vertical scroll into the X card
+            pan, the visible window into the pin is just taller now.
+            aria-hidden because the desktop instance carries the same
+            (empty) alt and there's no information lost to AT. */}
+        <div
+          aria-hidden
+          className="
+            relative mx-auto aspect-[516/833] w-full max-w-[420px]
+            shrink-0 overflow-hidden rounded-2xl bg-cloud-300
+            sm:max-w-[460px]
+            lg:hidden
+          "
+        >
+          <Image
+            src="/images/header-bg.jpg"
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1023px) 460px, 0px"
+            quality={85}
+            className="object-cover object-bottom"
+          />
+          <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-4">
+            <Image
+              src="/images/hero-illustration.png"
+              alt=""
+              width={526}
+              height={355}
+              sizes="(max-width: 640px) 78vw, (max-width: 1023px) 360px, 0px"
+              className="h-auto w-[78%]"
+            />
+          </div>
+        </div>
+
         <h2
           ref={headlineRef}
           className="max-w-[1168px] leading-tight tracking-tight text-content-brand text-[clamp(28px,5vw,50px)] lg:max-w-[clamp(280px,30vw,460px)]"
@@ -245,48 +288,6 @@ export function StepsSection() {
             {steps.map((s) => (
               <StepCard key={s.number} {...s} />
             ))}
-          </div>
-        </div>
-
-        {/* Mobile-only hero composite — mirrors the desktop right-column
-            card so phones don't miss the field/man+jojo visual. Sized
-            to match the QuoteSection card above for visual consistency
-            (same aspect, same max-w clamps). Sits below the pinned
-            card track in the flex-col flow (the desktop instance is
-            absolute-positioned + GSAP-driven; this one is static so it
-            doesn't fight the timeline). Because the composite is now
-            full-width, the mobile stage drops the 100svh min-h so the
-            content can flow to its natural height — the GSAP pin still
-            channels vertical scroll into the X card pan; only the
-            visible window into that pin is taller now.
-            aria-hidden because the desktop instance carries the same
-            (empty) alt and there's no information lost to AT. */}
-        <div
-          aria-hidden
-          className="
-            relative mx-auto aspect-[516/833] w-full max-w-[420px]
-            shrink-0 overflow-hidden rounded-2xl bg-cloud-300
-            sm:max-w-[460px]
-            lg:hidden
-          "
-        >
-          <Image
-            src="/images/header-bg.jpg"
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1023px) 460px, 0px"
-            quality={85}
-            className="object-cover object-bottom"
-          />
-          <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-4">
-            <Image
-              src="/images/hero-illustration.png"
-              alt=""
-              width={526}
-              height={355}
-              sizes="(max-width: 640px) 78vw, (max-width: 1023px) 360px, 0px"
-              className="h-auto w-[78%]"
-            />
           </div>
         </div>
 
