@@ -1,17 +1,23 @@
 import { NextResponse } from "next/server";
+import { getSupabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
 /**
- * Waitlist signup. POSTs to Resend's modern Contacts endpoint
- * (https://resend.com/docs/api-reference/contacts/create-contact). The
- * legacy /audiences/{id}/contacts path is being phased out in favour of
- * the unscoped /contacts path with an optional segment.
+ * Waitlist signup. Supabase is the SOURCE OF TRUTH; Resend is a
+ * best-effort mirror.
  *
- * Required env: RESEND_API_KEY
- * Optional env: RESEND_WAITLIST_SEGMENT_ID — if set, contacts are tagged
- *   into this segment so launch broadcasts can target the waitlist.
+ *   1. Insert into public.waitlist_signups (REQUIRED). A unique-email
+ *      conflict means the address is already on the list. Any other DB
+ *      failure rejects the signup (502) — we never report success when
+ *      the source of truth wasn't written.
+ *   2. POST to Resend's modern Contacts endpoint (BEST-EFFORT). A
+ *      Resend failure is logged but the signup still succeeds, because
+ *      the row is already safely in Supabase. Launch broadcasts go out
+ *      via Resend later; missing/broken Resend just means a contact to
+ *      backfill, not a lost signup.
  *
- * If RESEND_API_KEY is missing the route returns 503 — preferable to a
- * silent local-dev success that loses signups.
+ * Required env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Optional env: RESEND_API_KEY (no key → skip the mirror, signup still
+ *   recorded), RESEND_WAITLIST_SEGMENT_ID (tag contacts into a segment).
  *
  * Abuse defenses (layered):
  *   1. Honeypot field — bots fill any unknown form input; humans don't see
@@ -207,28 +213,86 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  // ── 1. Source of truth: Supabase insert (REQUIRED) ────────────────
+  if (!supabaseConfigured) {
     console.warn(
-      "[waitlist] RESEND_API_KEY not configured — signup not delivered."
+      "[waitlist] Supabase not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) — cannot record signup."
     );
     return jsonError(503, "Waitlist isn't configured yet. Try again soon.");
   }
 
+  const userAgent = request.headers.get("user-agent")?.slice(0, 512) ?? null;
+
+  let alreadyOnList = false;
+  try {
+    const { error } = await getSupabaseAdmin()
+      .from("waitlist_signups")
+      .insert({ email, source: "landing", user_agent: userAgent });
+
+    if (error) {
+      // 23505 = unique_violation → the email is already on the list.
+      // Treat as success (idempotent signup), don't surface an error.
+      if (error.code === "23505") {
+        alreadyOnList = true;
+      } else {
+        console.error(
+          "[waitlist] Supabase insert failed",
+          error.code,
+          error.message
+        );
+        return jsonError(
+          502,
+          "Waitlist service is having a moment. Try again."
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[waitlist] Supabase insert threw", err);
+    return jsonError(502, "Couldn't reach the waitlist service. Try again.");
+  }
+
+  // ── 2. Best-effort mirror into Resend Contacts ────────────────────
+  // The signup is already safely recorded above; a Resend failure must
+  // NOT fail the request. Skip entirely on a duplicate (the contact
+  // already exists) or when no API key is configured.
+  if (!alreadyOnList) {
+    await mirrorToResend(email).catch((err) => {
+      console.error("[waitlist] Resend mirror failed (signup still ok)", err);
+    });
+  }
+
+  return NextResponse.json<SuccessBody>(
+    alreadyOnList ? { ok: true, alreadyOnList: true } : { ok: true }
+  );
+}
+
+/**
+ * Push the email into Resend's modern Contacts endpoint. Best-effort:
+ * never throws to the caller in a way that should fail the signup —
+ * the caller already persisted the source-of-truth row. Errors are
+ * logged here; the caller's .catch is a final safety net.
+ */
+async function mirrorToResend(email: string): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      "[waitlist] RESEND_API_KEY not set — skipping Resend mirror (signup recorded in Supabase)."
+    );
+    return;
+  }
+
   const segmentId = process.env.RESEND_WAITLIST_SEGMENT_ID;
-  // Resend's modern Contacts API expects segments as `[{ id }]` objects,
-  // not an array of bare ID strings.
+  // Resend's modern Contacts API expects segments as `[{ id }]` objects.
   const upstreamBody: Record<string, unknown> = { email };
   if (segmentId) upstreamBody.segments = [{ id: segmentId }];
 
-  // Bound upstream latency so a slow Resend call doesn't dominate
-  // function execution time or leave the user staring at a spinner.
+  // Bound upstream latency so a slow Resend call can't dominate the
+  // function or leave the user staring at a spinner.
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 10_000);
 
-  let resendResponse: Response;
   try {
-    resendResponse = await fetch("https://api.resend.com/contacts", {
+    const resendResponse = await fetch("https://api.resend.com/contacts", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -237,70 +301,43 @@ export async function POST(request: Request) {
       body: JSON.stringify(upstreamBody),
       signal: abort.signal,
     });
-  } catch (err) {
-    console.error("[waitlist] Resend fetch threw", err);
-    return jsonError(502, "Couldn't reach the waitlist service. Try again.");
+
+    if (resendResponse.ok) return;
+
+    // Duplicate-in-Resend is fine — Supabase already owns the truth.
+    let upstreamSignal = "";
+    try {
+      const upstream = await resendResponse.json();
+      if (upstream && typeof upstream === "object") {
+        const u = upstream as Record<string, unknown>;
+        upstreamSignal = [
+          u.message,
+          u.name,
+          u.error,
+          typeof u.error === "object" && u.error
+            ? (u.error as Record<string, unknown>).message
+            : undefined,
+        ]
+          .filter((v): v is string => typeof v === "string")
+          .join(" ");
+      }
+    } catch {
+      // Non-JSON body — log the status only.
+    }
+
+    const lower = upstreamSignal.toLowerCase();
+    const isDuplicate =
+      lower.includes("already") ||
+      lower.includes("exists") ||
+      lower.includes("duplicate");
+    if (isDuplicate) return;
+
+    console.error(
+      "[waitlist] Resend mirror rejected (signup still recorded)",
+      resendResponse.status,
+      upstreamSignal
+    );
   } finally {
     clearTimeout(timer);
   }
-
-  // 2xx → success. Resend's modern API returns 200 with `{ id, email, ... }`.
-  if (resendResponse.ok) {
-    return NextResponse.json<SuccessBody>({ ok: true });
-  }
-
-  // Resend doesn't publish a single status code for duplicates and the
-  // payload shape isn't fully documented, so we scan a few plausible
-  // fields for the signal. Strings on success-likely fields like `name`
-  // ("contact_already_exists") are also a common error-type pattern.
-  let upstreamSignal = "";
-  try {
-    const upstream = await resendResponse.json();
-    if (upstream && typeof upstream === "object") {
-      const u = upstream as Record<string, unknown>;
-      const candidates: unknown[] = [
-        u.message,
-        u.name,
-        u.error,
-        typeof u.error === "object" && u.error
-          ? (u.error as Record<string, unknown>).message
-          : undefined,
-      ];
-      upstreamSignal = candidates
-        .filter((v): v is string => typeof v === "string")
-        .join(" ");
-    }
-  } catch {
-    // Body wasn't JSON — fall through with empty upstreamSignal.
-  }
-
-  const lower = upstreamSignal.toLowerCase();
-  const isDuplicate =
-    resendResponse.status >= 400 &&
-    resendResponse.status < 500 &&
-    (lower.includes("already") ||
-      lower.includes("exists") ||
-      lower.includes("duplicate"));
-
-  if (isDuplicate) {
-    return NextResponse.json<SuccessBody>({ ok: true, alreadyOnList: true });
-  }
-
-  // Don't leak Resend's exact wording to users.
-  console.error(
-    "[waitlist] Resend rejected signup",
-    resendResponse.status,
-    upstreamSignal
-  );
-
-  // 401/403/5xx are operational/auth issues, not user input issues —
-  // surface a service message instead of asking the user to recheck.
-  if (
-    resendResponse.status === 401 ||
-    resendResponse.status === 403 ||
-    resendResponse.status >= 500
-  ) {
-    return jsonError(502, "Waitlist service is having a moment. Try again.");
-  }
-  return jsonError(400, "We couldn't add that email. Double-check it?");
 }

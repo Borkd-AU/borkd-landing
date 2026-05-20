@@ -87,9 +87,15 @@ if echo "$DIFF" | grep -E 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z
   report "JWT token pattern (eyJ…eyJ…)"
 fi
 
-# Supabase service-role hint
-if echo "$DIFF" | grep -Ei 'supabase.{0,20}service.{0,5}role' >/dev/null; then
-  report "Supabase service-role mention — verify via env, not literal"
+# Supabase service-role hint.
+# Only flag a real leak: the SUPABASE_SERVICE_ROLE_KEY env *name* is a
+# legitimate code/comment/.env.example reference (process.env.*,
+# docstrings, empty template placeholder) and must not trip the hook.
+# An actual service-role key is always a JWT, which the generic-JWT
+# rule above already catches. So here we flag only the var name
+# followed by `=` and a non-trivial value on the same line.
+if echo "$DIFF" | grep -E 'SUPABASE_SERVICE_ROLE_KEY[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9._-]{12,}' >/dev/null; then
+  report "Supabase service-role key assigned a literal value — use process.env, keep the value in .env.local"
 fi
 
 # Private key blocks
