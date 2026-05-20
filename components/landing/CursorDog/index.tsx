@@ -9,6 +9,7 @@ import {
   SLACK_DECAY_TAU_MS,
   SLACK_VELOCITY_GAIN_K,
   MAX_SLACK,
+  WANDER_RADIUS,
   RAF_WAKE_THRESHOLD_MS,
   ENTRY_TROT_MS,
 } from './constants'
@@ -51,6 +52,19 @@ function readDogPos(dogEl: SVGGElement | null): CursorTarget {
   return {
     x: Number(gsap.getProperty(dogEl, 'x')) || 0,
     y: Number(gsap.getProperty(dogEl, 'y')) || 0,
+  }
+}
+
+// Smooth pseudo-random wander offset, composed of two sinusoids per axis at
+// incommensurate frequencies so the dog ambles around the cursor instead of
+// converging on it. Returns the cursor position offset by up to WANDER_RADIUS.
+function wanderTarget(cursor: CursorTarget, now: number): CursorTarget {
+  const t = now / 1000 // seconds
+  const oxNorm = (Math.cos(t * 0.51) + 0.6 * Math.cos(t * 1.13)) / 1.6
+  const oyNorm = (Math.sin(t * 0.69) + 0.6 * Math.sin(t * 1.27)) / 1.6
+  return {
+    x: cursor.x + WANDER_RADIUS * oxNorm,
+    y: cursor.y + WANDER_RADIUS * oyNorm,
   }
 }
 
@@ -144,8 +158,15 @@ export default function CursorDog() {
       // Read rendered dog position for clamp + leash (Codex #10)
       const dogPos = readDogPos(dogRef.current)
 
-      // Compute clamped target each frame
-      const clamped = clampTarget(tracker.targetRef.current, dogPos, MAX_STRETCH)
+      // The dog targets a wandering offset from the cursor (rather than the
+      // cursor itself), so it ambles around the cursor instead of overlapping
+      // it. During FOLLOWING and SNIFFING the wander applies; PAUSED_INPUT and
+      // PARKED don't write quickTo at all, so the target is moot for them.
+      const followTarget = wanderTarget(tracker.targetRef.current, now)
+
+      // Compute clamped target each frame (clamp keeps the dog within MAX_STRETCH
+      // of the cursor — the wander offset is naturally capped by the clamp).
+      const clamped = clampTarget(followTarget, dogPos, MAX_STRETCH)
 
       // Physics on RAF (single clock)
       if (lastClampedTarget != null) {
