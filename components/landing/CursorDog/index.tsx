@@ -229,7 +229,7 @@ export default function CursorDog() {
       tracker.attachResize(signal, syncSvgViewBox)
       tracker.attachPointer(signal, () => {
         if (!hasEnteredRef.current) {
-          entryTrot()
+          ctx.add(() => entryTrot())
         }
         sm.transition('FOLLOWING')
       })
