@@ -189,15 +189,24 @@ export function StepsSection() {
     <section
       ref={sectionRef}
       id="steps"
-      className="relative w-full bg-background-brand"
+      // overflow-hidden contains the GSAP-translated card track inside
+      // the section. focus has overflow:hidden so the *visual* clip
+      // works, but a transformed descendant's bounding box still
+      // extends out (track right ≈ 1.4k on a 390px phone), which
+      // leaks into body.scrollWidth and causes the whole page to
+      // scroll horizontally on mobile (and throws off the hero
+      // layout above the fold). Clipping at the section boundary
+      // stops the leak without touching the desktop hero composite
+      // (already inside the stage's max-w container).
+      className="relative w-full overflow-hidden bg-background-brand"
     >
       <div
         ref={stageRef}
         className="
           relative mx-auto flex min-h-[100svh] max-w-[1440px] flex-col
-          justify-center gap-8 px-6
-          py-[clamp(48px,10vh,120px)]
-          sm:gap-10 sm:px-12
+          justify-center gap-6 px-6
+          py-[clamp(32px,8vh,120px)]
+          sm:gap-10 sm:px-12 sm:py-[clamp(48px,10vh,120px)]
           lg:min-h-[clamp(720px,80vh,840px)] lg:gap-12
           lg:px-[clamp(48px,16vw,235px)]
         "
@@ -236,6 +245,43 @@ export function StepsSection() {
             {steps.map((s) => (
               <StepCard key={s.number} {...s} />
             ))}
+          </div>
+        </div>
+
+        {/* Mobile-only hero composite — mirrors the desktop right-column
+            card so phones don't miss the field/man+jojo visual. Sits
+            below the pinned card track in the flex-col flow (the
+            desktop instance is absolute-positioned + GSAP-driven; this
+            one is static so it doesn't fight the timeline). Width
+            capped so the whole pinned section still fits inside
+            min-h-[100svh] on shorter phones (e.g. iPhone SE 667).
+            aria-hidden because the desktop instance carries the same
+            (empty) alt and there's no information lost to AT. */}
+        <div
+          aria-hidden
+          className="
+            relative mx-auto aspect-[516/833] w-[clamp(140px,38vw,220px)]
+            overflow-hidden rounded-2xl bg-cloud-300
+            lg:hidden
+          "
+        >
+          <Image
+            src="/images/header-bg.jpg"
+            alt=""
+            fill
+            sizes="(max-width: 1023px) 260px, 0px"
+            quality={85}
+            className="object-cover object-bottom"
+          />
+          <div className="absolute inset-x-0 bottom-[8%] flex justify-center px-4">
+            <Image
+              src="/images/hero-illustration.png"
+              alt=""
+              width={526}
+              height={355}
+              sizes="(max-width: 1023px) 200px, 0px"
+              className="h-auto w-[78%]"
+            />
           </div>
         </div>
 
