@@ -8,6 +8,7 @@ import {
   SNIFF_AFTER_MS,
   SLACK_DECAY_TAU_MS,
   SLACK_VELOCITY_GAIN_K,
+  MAX_SLACK,
   RAF_WAKE_THRESHOLD_MS,
   ENTRY_TROT_MS,
 } from './constants'
@@ -153,7 +154,14 @@ export default function CursorDog() {
           const vx = (clamped.x - lastClampedTarget.x) / dt
           const vy = (clamped.y - lastClampedTarget.y) / dt
           const speed = Math.hypot(vx, vy)
-          slack = slack * Math.exp(-dtMs / SLACK_DECAY_TAU_MS) + speed * SLACK_VELOCITY_GAIN_K
+          // Clamp slack to defend against cursor teleport (display sleep / automation
+          // tools / dock unhide) which generates spike velocities the EMA can't decay
+          // back fast enough — without this clamp the leash control-point Y could
+          // land thousands of pixels off-screen, drawing a giant vertical line.
+          slack = Math.min(
+            MAX_SLACK,
+            slack * Math.exp(-dtMs / SLACK_DECAY_TAU_MS) + speed * SLACK_VELOCITY_GAIN_K,
+          )
         }
       }
       lastClampedTarget = clamped
