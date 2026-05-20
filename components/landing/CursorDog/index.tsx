@@ -277,6 +277,15 @@ export default function CursorDog() {
     return () => {
       // ORDER IS LOAD-BEARING per spec line 175.
       gsap.ticker.remove(tick)
+      // Kill state-machine timelines explicitly: they were created from listener
+      // callbacks (sm.transition → fireBark/startSniffLoop), which run AFTER the
+      // gsap.context() callback returned, so they are NOT captured by ctx. Without
+      // this explicit kill, ctx.revert() leaves the sniff timeline (repeat: -1)
+      // running on detached SVG nodes — a real memory leak Codex caught in final review.
+      sm.timelineRefs.barkTimelineRef.current?.kill()
+      sm.timelineRefs.barkTimelineRef.current = null
+      sm.timelineRefs.sniffTimelineRef.current?.kill()
+      sm.timelineRefs.sniffTimelineRef.current = null
       ctx.revert()
       controller.abort()
       sm.pendingTimers.forEach((h) => clearTimeout(h))
