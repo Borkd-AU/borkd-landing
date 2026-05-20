@@ -269,3 +269,9 @@ i {
   font-family: var(--font-display);
   font-style: italic;
 }
+
+@media print {
+  [data-cursor-dog] {
+    display: none;
+  }
+}
