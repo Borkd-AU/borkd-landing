@@ -203,11 +203,11 @@ export function StepsSection() {
       <div
         ref={stageRef}
         className="
-          relative mx-auto flex min-h-[100svh] max-w-[1440px] flex-col
-          justify-center gap-6 px-6
-          py-[clamp(32px,8vh,120px)]
-          sm:gap-10 sm:px-12 sm:py-[clamp(48px,10vh,120px)]
-          lg:min-h-[clamp(720px,80vh,840px)] lg:gap-12
+          relative mx-auto flex max-w-[1440px] flex-col
+          gap-8 px-6
+          py-[clamp(48px,10vh,120px)]
+          sm:gap-10 sm:px-12
+          lg:min-h-[clamp(720px,80vh,840px)] lg:justify-center lg:gap-12
           lg:px-[clamp(48px,16vw,235px)]
         "
       >
@@ -249,19 +249,24 @@ export function StepsSection() {
         </div>
 
         {/* Mobile-only hero composite — mirrors the desktop right-column
-            card so phones don't miss the field/man+jojo visual. Sits
-            below the pinned card track in the flex-col flow (the
-            desktop instance is absolute-positioned + GSAP-driven; this
-            one is static so it doesn't fight the timeline). Width
-            capped so the whole pinned section still fits inside
-            min-h-[100svh] on shorter phones (e.g. iPhone SE 667).
+            card so phones don't miss the field/man+jojo visual. Sized
+            to match the QuoteSection card above for visual consistency
+            (same aspect, same max-w clamps). Sits below the pinned
+            card track in the flex-col flow (the desktop instance is
+            absolute-positioned + GSAP-driven; this one is static so it
+            doesn't fight the timeline). Because the composite is now
+            full-width, the mobile stage drops the 100svh min-h so the
+            content can flow to its natural height — the GSAP pin still
+            channels vertical scroll into the X card pan; only the
+            visible window into that pin is taller now.
             aria-hidden because the desktop instance carries the same
             (empty) alt and there's no information lost to AT. */}
         <div
           aria-hidden
           className="
-            relative mx-auto aspect-[516/833] w-[clamp(140px,38vw,220px)]
-            overflow-hidden rounded-2xl bg-cloud-300
+            relative mx-auto aspect-[516/833] w-full max-w-[420px]
+            shrink-0 overflow-hidden rounded-2xl bg-cloud-300
+            sm:max-w-[460px]
             lg:hidden
           "
         >
@@ -269,7 +274,7 @@ export function StepsSection() {
             src="/images/header-bg.jpg"
             alt=""
             fill
-            sizes="(max-width: 1023px) 260px, 0px"
+            sizes="(max-width: 640px) 100vw, (max-width: 1023px) 460px, 0px"
             quality={85}
             className="object-cover object-bottom"
           />
@@ -279,7 +284,7 @@ export function StepsSection() {
               alt=""
               width={526}
               height={355}
-              sizes="(max-width: 1023px) 200px, 0px"
+              sizes="(max-width: 640px) 78vw, (max-width: 1023px) 360px, 0px"
               className="h-auto w-[78%]"
             />
           </div>
