@@ -70,7 +70,24 @@ export function StepsSection() {
 
       // Shared pinned horizontal-pan timeline. `withHero` is true only
       // on desktop, where the right-column composite slides in + drifts.
-      const buildTimeline = (withHero: boolean) => {
+      //
+      // `startOffsetEl` is the element whose top decides when the pin
+      // engages:
+      //   • desktop: the section itself — pin starts when sectionTop
+      //     reaches viewportTop ("top top"), which on lg lines up with
+      //     content-top thanks to the stage's 100svh min-h + justify-
+      //     center.
+      //   • mobile: the focus viewport (card-slider mask). The mobile
+      //     stage is taller than the viewport (image + headline +
+      //     slider), so pinning at sectionTop would push the slider
+      //     off the bottom of the fold (user reported this). Use the
+      //     slider's offset within the section as the start delta so
+      //     pin only fires once the slider has scrolled to viewportTop
+      //     — the image + headline pass naturally above the fold, and
+      //     the X card pan plays in plain view. The section itself is
+      //     still the pin target so the pin spacer's flex layout stays
+      //     intact (pinning the flex child directly breaks layout).
+      const buildTimeline = (withHero: boolean, startOffsetEl: Element) => {
         const hero = withHero ? heroRef.current : null;
         // Hero baseline transform — vertically centre the absolutely
         // -positioned hero before the timeline takes over. Replaces
@@ -83,10 +100,29 @@ export function StepsSection() {
           return card ? -card.offsetLeft : 0;
         };
 
+        // Distance from section top down to where pin should engage.
+        // On desktop startOffsetEl === section, so this is 0 ("top top").
+        // On mobile it's the slider's offset below the section top,
+        // minus a viewport-relative offset so the headline above the
+        // slider stays in view when pin starts (slider lands ~45% down
+        // the viewport, not at the very top).
+        const startDelta = () => {
+          if (startOffsetEl === section) return 0;
+          const sectionRect = section.getBoundingClientRect();
+          const startRect = startOffsetEl.getBoundingClientRect();
+          const raw = Math.round(startRect.top - sectionRect.top);
+          // Bring the slider down so headline + slider both sit in
+          // view. 45% of the viewport feels like the right resting
+          // point on common phones (slider ~170px tall, headline ~90,
+          // 24px gap — total ~284 fits comfortably in the upper half).
+          const headlineRoom = Math.round(window.innerHeight * 0.45);
+          return Math.max(0, raw - headlineRoom);
+        };
+
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: section,
-            start: "top top",
+            start: () => `top top-=${startDelta()}`,
             end: () => `+=${window.innerHeight * 2.5}`,
             pin: true,
             scrub: 0.1,
@@ -168,18 +204,21 @@ export function StepsSection() {
         document.fonts?.ready.then(() => ScrollTrigger.refresh());
       };
 
-      // Desktop — pinned horizontal pan with the hero composite.
+      // Desktop — pin the section from its very top (startOffsetEl ===
+      // section means startDelta === 0, i.e. "top top"). At lg the
+      // stage fits 100svh + centers so this lines up with content-top.
       mm.add(
         "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
-        () => buildTimeline(true)
+        () => buildTimeline(true, section)
       );
 
-      // Mobile / tablet — identical pin + horizontal pan, no hero.
-      // ScrollTrigger pins on native touch scroll; ScrollSmoother is
-      // desktop-gated so normalizeScroll never strands the page here.
+      // Mobile / tablet — pin the section, but delay the start until
+      // the card slider (focus) has scrolled up to the viewport top.
+      // The image + headline pass naturally as a section header; the
+      // slider locks in plain view while the X card pan plays.
       mm.add(
         "(max-width: 1023px) and (prefers-reduced-motion: no-preference)",
-        () => buildTimeline(false)
+        () => buildTimeline(false, focus)
       );
     },
     { scope: sectionRef }
