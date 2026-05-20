@@ -61,7 +61,10 @@ export function useCursorTracker(): CursorTracker {
     attachVisibility(signal, onHidden, onVisible) {
       document.addEventListener(
         'visibilitychange',
-        () => { document.hidden ? onHidden() : onVisible() },
+        () => {
+          if (document.hidden) onHidden()
+          else onVisible()
+        },
         { signal },
       )
     },
