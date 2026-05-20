@@ -4,6 +4,7 @@ import {
   BARK_MIN_MS,
   BARK_MAX_MS,
   BARK_TILT_DEG,
+  BARK_SHOUT_PEAK_SCALE,
   SNIFF_TILT_DEG,
   SHOUT_SVG_ORIGIN,
 } from './constants'
@@ -95,7 +96,7 @@ export function createDogStateMachine(
       .fromTo(
         refs.shoutRef.current,
         { opacity: 0, scale: 0.5 },
-        { opacity: 1, scale: 1, duration: 0.08, svgOrigin: SHOUT_SVG_ORIGIN },
+        { opacity: 1, scale: BARK_SHOUT_PEAK_SCALE, duration: 0.08, svgOrigin: SHOUT_SVG_ORIGIN },
       )
       .to({}, { duration: 0.20 }) // hold
       .to(refs.shoutRef.current, { opacity: 0, duration: 0.15, svgOrigin: SHOUT_SVG_ORIGIN })
@@ -109,9 +110,11 @@ export function createDogStateMachine(
 
   function trotOffscreen(): void {
     if (refs.dogRef.current == null) return
+    // No opacity fade — the dog is offscreen during PARKED anyway, and a fade
+    // here only manifests on return as "the dog came back lighter". Keep the
+    // trot itself but leave opacity at 1.0 throughout.
     gsap.to(refs.dogRef.current, {
       x: window.innerWidth + 32,
-      opacity: 0.4, // PARK_FADE_OPACITY
       duration: 0.6,
       ease: 'power2.in',
     })
