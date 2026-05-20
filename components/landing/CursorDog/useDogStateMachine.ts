@@ -16,6 +16,8 @@ export interface StateMachineHandle {
   stateRef: { current: DogState }
   /** Mutates the state ref + runs side effects. Returns true if accepted. */
   transition: (next: DogState) => boolean
+  /** Fire a bark immediately, cancelling the scheduled timer-bark first so we don't double-fire. */
+  triggerBark: () => void
   /** Pending-timer set — caller's cleanup MUST iterate + clearTimeout + clear() */
   pendingTimers: Set<number>
   /** Timeline refs — caller's cleanup is ctx.revert(), but these are used by transitions */
@@ -148,19 +150,29 @@ export function createDogStateMachine(
     )
   }
 
+  /** Clear the scheduled-bark timer (if any) then transition to BARKING.
+   *  Used by the dev hook AND by the click-to-bark handler — both want the
+   *  next bark to be NOW, without the pending timer also firing later. */
+  function triggerBark(): void {
+    clearBark()
+    transition('BARKING')
+  }
+
   function setup(): void {
     if (process.env.NODE_ENV === 'development') {
       ;(window as unknown as { __borkdDog?: unknown }).__borkdDog = {
         state: () => stateRef.current,
-        triggerBark: () => { clearBark(); transition('BARKING') },
+        triggerBark,
         peekBarkTimer: () => barkTimerHandle,
       }
+      console.log('%c🐕 borkd', 'color:#3A39FF;font-weight:bold', '— try window.__borkdDog.triggerBark()')
     }
   }
 
   return {
     stateRef,
     transition,
+    triggerBark,
     pendingTimers,
     timelineRefs: { barkTimelineRef, sniffTimelineRef },
     setup,

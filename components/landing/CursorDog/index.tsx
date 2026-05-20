@@ -105,6 +105,8 @@ export default function CursorDog() {
     let lastClampedTarget: CursorTarget | null = null
     let slack = 0
     let prevTickState: DogState = 'DISABLED'
+    let currentFacing: 1 | -1 = 1   // 1 = facing right, -1 = facing left
+    const FLIP_DEADZONE = 12        // px — hysteresis to prevent flip-flop when cursor is near dog.x
     // Focusout debounce RAF handle — tracked so cleanup can cancel it.
     // Without this, the RAF can fire after teardown and call sm.transition
     // on a state machine whose refs are already null. (Codex round-2 finding.)
@@ -160,13 +162,32 @@ export default function CursorDog() {
 
       // The dog targets a wandering offset from the cursor (rather than the
       // cursor itself), so it ambles around the cursor instead of overlapping
-      // it. During FOLLOWING and SNIFFING the wander applies; PAUSED_INPUT and
-      // PARKED don't write quickTo at all, so the target is moot for them.
-      const followTarget = wanderTarget(tracker.targetRef.current, now)
+      // it. During FOLLOWING/SNIFFING the wander applies; during BARKING the
+      // dog freezes mid-stride so the bark reads as "barking AT something"
+      // rather than "barking while walking through" — quickTo target stays
+      // at the current dog position, no new motion.
+      const followTarget =
+        currentState === 'BARKING'
+          ? dogPos
+          : wanderTarget(tracker.targetRef.current, now)
 
       // Compute clamped target each frame (clamp keeps the dog within MAX_STRETCH
       // of the cursor — the wander offset is naturally capped by the clamp).
       const clamped = clampTarget(followTarget, dogPos, MAX_STRETCH)
+
+      // Direction flip — face the actual cursor (not the wander offset, which
+      // would flip-flop). Hysteresis prevents jitter when cursor is near dog.x.
+      const cursorDx = tracker.targetRef.current.x - dogPos.x
+      let desiredFacing: 1 | -1 = currentFacing
+      if (Math.abs(cursorDx) > FLIP_DEADZONE) {
+        desiredFacing = cursorDx < 0 ? -1 : 1
+      }
+      if (desiredFacing !== currentFacing) {
+        currentFacing = desiredFacing
+        if (bobRef.current) {
+          gsap.to(bobRef.current, { scaleX: desiredFacing, duration: 0.2, ease: 'power2.out' })
+        }
+      }
 
       // Physics on RAF (single clock)
       if (lastClampedTarget != null) {
@@ -244,6 +265,13 @@ export default function CursorDog() {
         quickToX = gsap.quickTo(el, 'x', { duration: 0.4, ease: 'power3' })
         quickToY = gsap.quickTo(el, 'y', { duration: 0.4, ease: 'power3' })
       })
+      // Reset the bob group's flip + bob offsets at mount. Important because
+      // the flip tween (gsap.to scaleX from the tick) is NOT captured by ctx
+      // (created from listener-callback / tick scope), so scaleX from a prior
+      // mount can persist across StrictMode double-mount or mode flips.
+      safeSet(bobRef, (el) => {
+        gsap.set(el, { scaleX: 1, x: 0, y: 0 })
+      })
 
       // Mobile branch — no tracker, no leash, no tick
       if (mode === 'mobile') {
@@ -266,6 +294,16 @@ export default function CursorDog() {
         signal,
         () => sm.transition('PARKED'),
         () => sm.transition('IDLE'),
+      )
+      // Click anywhere → bark. Suppressed when user is typing in a form so we
+      // don't bark at every keystroke-click. triggerBark clears the scheduled
+      // timer first so we don't get a delayed double-bark.
+      window.addEventListener(
+        'click',
+        () => {
+          if (sm.stateRef.current !== 'PAUSED_INPUT') sm.triggerBark()
+        },
+        { signal },
       )
       tracker.attachFocus(
         signal,

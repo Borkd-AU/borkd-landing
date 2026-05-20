@@ -52,7 +52,7 @@ export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, roo
           {/* bobRef — sniff bob lives here (y += 4). Separate from dogRef so the
               baseline reset (PAUSED_INPUT / PARKED entry) only zeros bobRef.y
               and never zaps the cursor-follow position. Spec round-7. */}
-          <g ref={bobRef as Ref<SVGGElement>}>
+          <g ref={bobRef as Ref<SVGGElement>} style={{ transformOrigin: '15.5px 13px', transformBox: 'fill-box' }}>
             <g ref={headRef as Ref<SVGGElement>} style={{ transformOrigin: '16px 22px', transformBox: 'fill-box' }}>
               <path
                 d="M16.4333 21.4596C23.7166 26.2067 30.0434 22.7602 30.0434 16.5824C30.0434 10.4047 23.5215 9.49424 19.4247 9.94944C15.3278 10.4046 15.7734 15.8447 20.0941 14.4364C25.0822 12.8107 22.5463 0.975433 14.1113 0.975436C5.1373 0.975438 0.975428 8.92055 0.975436 15.9971C0.975441 21.5246 4.44891 25.6537 9.2801 24.8411C14.1113 24.0285 13.0518 18.5983 10.3856 13.331"
