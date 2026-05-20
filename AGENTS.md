@@ -4,27 +4,48 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-## Pending: Resend / waitlist wiring (assigned: Ryan)
+## Session start (Claude)
 
-The waitlist signup endpoint at `app/api/waitlist/route.ts` is built and
-tested but env-gated. Until `RESEND_API_KEY` is set, the route returns 503
-with friendly copy and no contact is created.
+ALWAYS invoke these two skills at the start of every session, before any
+other work — including before answering "what's the state of the project?"
+or any clarifying questions:
 
-To wire it up:
+1. `andrej-karpathy-skills:karpathy-guidelines` — durable behavioral
+   guidelines (think before coding, simplicity first, surgical changes,
+   goal-driven execution). Bias toward caution; push back on speculative
+   complexity.
+2. `codex-cowork` — adversarial review contract. Every spec, plan, design
+   decision, and substantial code change goes through the
+   `codex:codex-rescue` subagent for review before the user proceeds.
 
-1. Get a Resend API key at https://resend.com/api-keys.
-2. (Optional) Create a Resend Segment for the waitlist and grab its ID —
-   without one, contacts are added unsegmented.
-3. Drop both into `.env.local` (gitignored):
-   ```
-   RESEND_API_KEY=re_...
-   RESEND_WAITLIST_SEGMENT_ID=seg_...   # optional
-   ```
-4. For Vercel deployments, set the same keys in Project Settings →
-   Environment Variables (Production + Preview).
-5. Smoke test by submitting an email through the homepage form. The
-   upstream Resend response is logged on errors and returned as
-   `{ ok: true }` on success.
+These are not optional. Do not skip even for simple tasks. If the session
+loads without these skills available, surface that immediately instead of
+silently proceeding.
+
+## Resend / waitlist wiring (complete — 2026-05-20)
+
+Wired up end-to-end by Claude in the 2026-05-20 session:
+
+- **Verified Resend domain:** `team.borkd.app` (Tokyo region, sending only).
+- **Squarespace DNS records added under the `borkd.app` zone:**
+  - DKIM: TXT `resend._domainkey.team` → `p=MIGfMA…QIDAQAB`
+  - SPF MX: `send.team` priority 10 → `feedback-smtp.ap-northeast-1.amazonses.com`
+  - SPF TXT: `send.team` → `v=spf1 include:amazonses.com ~all`
+  - DMARC: TXT `_dmarc` (**ROOT** — not `_dmarc.team`) → `v=DMARC1; p=none;`
+- **DMARC at root:** Resend's recommended default. Applies to all of
+  borkd.app including Google Workspace mail. Currently `p=none` so no
+  enforcement; tightening to `quarantine`/`reject` would affect both
+  Resend and Google paths — touch with care.
+- **Resend API key:** `borkd-landing-production` (Sending access). Old
+  `Borkd Landing noreply` key deleted.
+- **Vercel env vars:** `RESEND_API_KEY` set in Production + Preview.
+  Production redeployed from commit `80d7c57`.
+- **Local dev:** `.env.local` was NOT created this session. To run the
+  waitlist locally, create `.env.local` with `RESEND_API_KEY=re_...`
+  (and optionally `RESEND_WAITLIST_SEGMENT_ID=seg_...`).
+- **Optional:** `RESEND_WAITLIST_SEGMENT_ID` is still unset; contacts
+  land unsegmented in the Audience. Create a Segment in Resend's UI
+  and copy its ID if desired.
 
 Notes:
 
