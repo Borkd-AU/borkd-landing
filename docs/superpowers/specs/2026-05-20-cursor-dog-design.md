@@ -38,12 +38,14 @@ The feature is decorative, non-load-bearing, and must not regress the landing pa
 <div data-cursor-dog ...>     <!-- position layer -->
   <svg viewBox="0 0 vw vh">   <!-- viewport-sized -->
     <path ref={leashRef} />
-    <g ref={dogRef} transform="translate(x,y)">  <!-- GSAP quickTo writes this -->
-      <g ref={headRef} style="transform-origin: 16px 22px">
-        <path d="...vector6-logo path..." />
-      </g>
-      <g ref={shoutRef} opacity="0">
-        <path d="...cartoon shout lines..." />
+    <g ref={dogRef} transform="translate(x,y)">  <!-- GSAP quickTo writes this — global follow -->
+      <g ref={bobRef}>                            <!-- sniff bob lives here; never touched by quickTo -->
+        <g ref={headRef} style="transform-origin: 16px 22px">
+          <path d="...vector6-logo path..." />
+        </g>
+        <g ref={shoutRef} opacity="0">
+          <path d="...cartoon shout lines..." />
+        </g>
       </g>
     </g>
   </svg>
@@ -51,6 +53,8 @@ The feature is decorative, non-load-bearing, and must not regress the landing pa
 ```
 
 **`shoutRef` hierarchy (deliberate):** `shoutRef` is a sibling of `headRef`, **not a child**. Consequence: the head-tilt rotation in the bark timeline applies only to `headRef` — the shout lines stay axis-aligned during the 12° tilt. This is intentional. Nesting `shoutRef` inside `headRef` would rigid-rotate the entire bark burst with the head, which at 12° reads as the shout lines "swinging" with the dog and breaks the cartoon convention of bark lines as ambient sound indicators. Implementation must preserve sibling order; do not "fix" by reparenting.
+
+**`bobRef` separates follow from bob (deliberate):** `dogRef` is the **global** follow transform — its `x` and `y` are written by `quickTo` and represent the dog's cursor-tracking position. `bobRef` is an inner group whose `y` is written by the sniff loop (`+= 4px` bob). They MUST stay separate. Resetting `dogRef.y → 0` (which the spec previously did on PARKED/PAUSED_INPUT/SNIFFING-exit) would snap the dog to the top of the viewport — `dogRef.y` is the follow position, not a baseline. All "baseline" resets target `bobRef.y → 0`, `headRef.rotation → 0`, `shoutRef.opacity → 0`; never `dogRef.y`. The sniff loop, the bark-from-SNIFFING reset, and the PARKED/PAUSED_INPUT freezes ALL respect this rule.
 
 On mobile, the same root layer hosts a **small fixed-size SVG** (no viewBox sync, no leash element).
 
@@ -105,13 +109,16 @@ Hooks **do not** create their own `gsap.context()`. There is one and only one.
 ```
 components/landing/CursorDog/
 ├─ index.tsx              ← controller; reads mode, renders branch or null
+├─ CursorDogMount.tsx     ← 'use client' wrapper — dynamic({ssr:false}) + requestIdleCallback
 ├─ useReactiveMode.ts     ← matchMedia (desktop / mobile / reduced-motion) → mode
 ├─ useCursorTracker.ts    ← pointer/focus/leave events → target ref + lastMoveAt
-├─ useDogStateMachine.ts  ← state enum + transitions + bark/sniff scheduler
+├─ stateMachine.ts        ← PURE — applyTransition + VALID_EDGES (Node-testable)
+├─ stateMachine.test.ts   ← single unit test on the pure transition function
+├─ useDogStateMachine.ts  ← runtime layer — GSAP timelines + bark scheduler
 ├─ DesktopDogSvg.tsx      ← viewport-spanning SVG (leash + dog + shout)
 ├─ MobileDogSvg.tsx       ← small fixed-size SVG (no leash, no viewport sync)
-├─ constants.ts           ← all tunable values
-└─ useDogStateMachine.test.ts  ← single unit test on the transition function
+├─ types.ts               ← shared types (DogState re-export, DogRefs incl. bobRef)
+└─ constants.ts           ← all tunable values (incl. SHOUT_SVG_ORIGIN)
 ```
 
 `index.tsx` is exported via `dynamic(() => import('@/components/landing/CursorDog'), { ssr: false })` from `app/layout.tsx`.
@@ -211,12 +218,12 @@ type DogState =
 | `DISABLED` | mount + mode resolved | `IDLE` | schedule first bark timer |
 | `IDLE` | pointermove | `FOLLOWING` | update `lastMoveAt = now` (set in the pointermove handler, *before* `transition()` is called — see data flow below) |
 | `FOLLOWING` | RAF tick: `now - lastMoveAt > SNIFF_AFTER_MS` | `SNIFFING` | start sniff loop |
-| `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `dogRef.y` → 0) |
-| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | **Side effects in order: (1) callback nulls `barkTimerHandle` + removes its captured handle from `pendingTimers` (first statement); (2) if previous state was `SNIFFING`, `sniffTimelineRef.current?.kill()` + `gsap.set()` `dogRef.y → 0`, `headRef` rotation → 0 instantly + null `sniffTimelineRef` (instant set, not tween — bark is about to animate `headRef`, can't compete with a baseline-restore tween); (3) call `transition('BARKING')`; (4) if and only if the transition was accepted (state is now `BARKING`), construct the bark timeline (~780ms) and store it in `barkTimelineRef.current`.** The accept-check guards against races where state moved to `DISABLED` between steps 2 and 3, preventing an orphaned timeline outside the gsap.context lifecycle. |
+| `SNIFFING` | pointermove | `FOLLOWING` | 150ms return-to-baseline tween (`headRef` rotation → 0, `bobRef.y` → 0) |
+| `IDLE` / `FOLLOWING` / `SNIFFING` | bark timer fires | `BARKING` | **Side effects in order: (1) callback nulls `barkTimerHandle` + removes its captured handle from `pendingTimers` (first statement); (2) if previous state was `SNIFFING`, `sniffTimelineRef.current?.kill()` + `gsap.set()` `bobRef.y → 0`, `headRef` rotation → 0 instantly + null `sniffTimelineRef` (instant set, not tween — bark is about to animate `headRef`, can't compete with a baseline-restore tween); (3) call `transition('BARKING')`; (4) if and only if the transition was accepted (state is now `BARKING`), construct the bark timeline (~780ms) and store it in `barkTimelineRef.current`.** The accept-check guards against races where state moved to `DISABLED` between steps 2 and 3, preventing an orphaned timeline outside the gsap.context lifecycle. |
 | `BARKING` | timeline ends | `IDLE` | reschedule bark in `random(BARK_MIN_MS, BARK_MAX_MS)` |
-| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | **Side effects run in this order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` head/shout/dog.y to baseline *instantly* (no tween — avoids racing the trot for `dogRef` ownership); (5) trot dog x → `innerWidth + 32` over 600ms (`power2.in`) + fade opacity → `PARK_FADE_OPACITY`.** Kill-before-trot order prevents bark `onComplete` from firing `transition('IDLE')` after parking; `gsap.set()` precedence rule prevents the sniff-baseline-restore tween from competing with the trot tween for `dogRef` writes. |
+| any except `DISABLED` | `pointerleave` on `<html>` | `PARKED` | **Side effects run in this order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` `bobRef.y → 0`, `headRef` rotation → 0, `shoutRef.opacity → 0` *instantly* (no tween — and **never touch `dogRef.y`**, which holds the cursor-follow position); (5) trot dog x → `innerWidth + 32` over 600ms (`power2.in`) + fade opacity → `PARK_FADE_OPACITY`.** Kill-before-trot order prevents bark `onComplete` from firing `transition('IDLE')` after parking; `gsap.set()` precedence rule prevents the sniff-baseline-restore tween from competing with the trot tween for `dogRef` writes. |
 | `PARKED` | `pointerenter` on `<html>` | `IDLE` | reschedule bark (guarded: only if no pending bark timer) |
-| any except `DISABLED` / `PAUSED_INPUT` / `PARKED` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | **Side effects in order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` head/shout/dog.y to baseline instantly — dog stays at its current `dogRef.x` position (the "freeze" intent).** Same kill-before-set order as PARKED; instant `gsap.set` (not tween) for baseline avoids competing animations since the dog is meant to be motionless during input. Covers entry from `BARKING` mid-animation. |
+| any except `DISABLED` / `PAUSED_INPUT` / `PARKED` | `focusin` on `input/textarea/[contenteditable]` | `PAUSED_INPUT` | **Side effects in order: (1) `barkTimelineRef.current?.kill()` + null it; (2) `sniffTimelineRef.current?.kill()` + null it; (3) `clearBark()` (timer); (4) `gsap.set()` `bobRef.y → 0`, `headRef` rotation → 0, `shoutRef.opacity → 0` instantly — `dogRef.x` and `dogRef.y` are **NOT touched** (they hold the freeze-in-place follow position); (5) controller-side: read current `dogRef` x/y and re-target `quickToX`/`quickToY` to those values to terminate any in-flight follow tween (the "freeze" intent).** Same kill-before-set order as PARKED. Touching `dogRef.y` here was a defect in earlier spec rounds — it snapped the dog to the top of the viewport. Covers entry from `BARKING` mid-animation. |
 | `PAUSED_INPUT` | `focusout` of last text input (debounced one RAF; re-check `document.activeElement`) | `FOLLOWING` | reschedule bark; resume follow |
 | any except `DISABLED` | `visibilitychange → hidden` | `PARKED` | same side effects in the same order as the `pointerleave → PARKED` row above (kill bark timeline → kill sniff timeline → clearBark → gsap.set baseline → trot offscreen + fade) |
 | `PARKED` | `visibilitychange → visible` | `IDLE` | reset `lastMoveAt = now`; reschedule bark |
@@ -346,12 +353,12 @@ Two safeguards against PARKED-resurrection: (a) explicit `barkTimelineRef.kill()
 
 Construction stores the timeline in `sniffTimelineRef.current` before steps begin. Steps:
 
-1. `dogRef.y` += 4px, `headRef` rotate to `SNIFF_TILT_DEG` (-6°) in 250ms (`sine.inOut`)
+1. `bobRef.y` += 4px, `headRef` rotate to `SNIFF_TILT_DEG` (-6°) in 250ms (`sine.inOut`)
 2. Return in 200ms
 3. Pause 600-1200ms (random)
-4. Repeat, with ±8px x-drift per cycle for visual interest
+4. Repeat, with ±8px x-drift per cycle for visual interest. **Drift writes to `bobRef.x`, NOT `dogRef.x`** — `dogRef.x` is owned by `quickTo` per frame; a `bobRef.x` drift composes with the follow position without fighting it. Baseline reset zeros both `bobRef.x` and `bobRef.y`.
 
-On any exit from `SNIFFING` (`SNIFFING → FOLLOWING`, `SNIFFING → BARKING`, `SNIFFING → PARKED`, `SNIFFING → PAUSED_INPUT`, `SNIFFING → DISABLED`): `sniffTimelineRef.current?.kill()` + 100-150ms return-to-baseline tween (`dogRef.y → 0`, `headRef` rotation → 0) + null `sniffTimelineRef.current`. Each individual transition row above specifies its own duration; this paragraph is the canonical "what kill-sniff means" reference.
+On any exit from `SNIFFING` (`SNIFFING → FOLLOWING`, `SNIFFING → BARKING`, `SNIFFING → PARKED`, `SNIFFING → PAUSED_INPUT`, `SNIFFING → DISABLED`): `sniffTimelineRef.current?.kill()` + 100-150ms return-to-baseline tween (`bobRef.y → 0`, `headRef` rotation → 0) + null `sniffTimelineRef.current`. Each individual transition row above specifies its own duration; this paragraph is the canonical "what kill-sniff means" reference.
 
 **Mobile branch:** No tracker. Fixed position bottom-right (24px from each edge). State machine only cycles `IDLE → BARKING → IDLE`. No leash, no sniff. Mounts `MobileDogSvg` (small fixed-size SVG, no viewBox sync).
 
@@ -435,7 +442,7 @@ This makes acceptance criteria deterministically verifiable in DevTools console 
 - Fail → switch follow loop from `quickTo` to manual RAF lerp (hybrid D); re-run.
 - 6× CPU throttle = stress budget; log only, non-blocking.
 
-**One unit test** (`useDogStateMachine.test.ts`, ~30 LOC):
+**One unit test** (`stateMachine.test.ts`, ~30 LOC — file split from `useDogStateMachine.ts` in plan round-2 so Node's `--experimental-strip-types` can load the test target with zero project imports):
 
 Tests the pure transition function in isolation (no GSAP, no DOM):
 - Valid transitions accepted
@@ -523,13 +530,17 @@ The wrapping `<div>` is in the DOM the whole time after mount (so `pointerleave`
 | File | Action |
 |---|---|
 | `components/landing/CursorDog/index.tsx` | New |
+| `components/landing/CursorDog/CursorDogMount.tsx` | New (per plan; `use client` wrapper around `dynamic({ssr:false})` since Next.js 16 forbids `ssr:false` in Server Components) |
 | `components/landing/CursorDog/useReactiveMode.ts` | New |
 | `components/landing/CursorDog/useCursorTracker.ts` | New |
-| `components/landing/CursorDog/useDogStateMachine.ts` | New |
+| `components/landing/CursorDog/stateMachine.ts` | New (pure logic, Node-testable) |
+| `components/landing/CursorDog/stateMachine.test.ts` | New |
+| `components/landing/CursorDog/useDogStateMachine.ts` | New (runtime layer — GSAP timelines + scheduler; imports `applyTransition` from `./stateMachine`) |
 | `components/landing/CursorDog/DesktopDogSvg.tsx` | New |
 | `components/landing/CursorDog/MobileDogSvg.tsx` | New |
+| `components/landing/CursorDog/types.ts` | New |
 | `components/landing/CursorDog/constants.ts` | New |
-| `components/landing/CursorDog/useDogStateMachine.test.ts` | New |
-| `app/layout.tsx` | Edit — add `dynamic()` import + idle-callback mount |
+| `app/layout.tsx` | Edit — import `CursorDogMount`, render outside `#smooth-wrapper` |
 | `app/globals.css` | Edit — add `@media print { [data-cursor-dog] { display: none } }` |
-| `public/images/illustration/vector6-logo.svg` **or** new `vector6-shout.svg` | New asset / edit — add shout-lines `<g>` (design-pass blocker) |
+| `package.json` | Edit — add `"test"` script for `node --test --experimental-strip-types stateMachine.test.ts` |
+| `public/images/illustration/vector6-shout.svg` | **DONE in commit `630efdb`** (sibling to `vector6-logo.svg`; logo is left untouched since it's referenced by SiteHeader/SiteFooter) |
