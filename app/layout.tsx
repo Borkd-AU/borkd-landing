@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import { SmoothScroll } from "@/components/SmoothScroll";
 import { FloatingTopBar } from "@/components/landing/SiteHeader";
+import CursorDogMount from "@/components/landing/CursorDog/CursorDogMount";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -62,6 +63,7 @@ export default function RootLayout({
             resolves against the viewport, not the transformed
             smooth-content element. */}
         <FloatingTopBar />
+        <CursorDogMount />
         <div id="smooth-wrapper">
           <div id="smooth-content">{children}</div>
         </div>
