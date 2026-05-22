@@ -35,42 +35,58 @@ import {
  * Skipped for `prefers-reduced-motion: reduce` — those users keep
  * native browser scrolling on every viewport.
  */
+// ScrollSmoother is ONLY worth its complexity on the home page, where the
+// Steps section needs pinned horizontal pans synced to a single RAF clock.
+// Subpages (about, for-venues, contact, privacy, terms) are static text —
+// they don't benefit from smooth scrolling, and the smoother actively
+// breaks per-element viewport math because it makes #smooth-wrapper
+// position:fixed and translates #smooth-content. getBoundingClientRect on
+// any descendant then reports coords relative to the transformed wrapper,
+// not the viewport, which silently breaks IntersectionObserver-equivalent
+// hand-rolled tracking (e.g. the floating TOC on /privacy and /terms).
+const SMOOTHER_ROUTES = new Set(["/"]);
+
 export function SmoothScroll() {
   const pathname = usePathname();
+  const smootherEnabled = SMOOTHER_ROUTES.has(pathname);
 
-  useGSAP(() => {
-    const mm = gsap.matchMedia();
+  useGSAP(
+    () => {
+      if (!smootherEnabled) return;
+      const mm = gsap.matchMedia();
 
-    mm.add(
-      "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
-      () => {
-        ScrollSmoother.create({
-          wrapper: "#smooth-wrapper",
-          content: "#smooth-content",
-          // 1.0 ≈ tight, gsap.com-style. Higher = floatier.
-          smooth: 1.0,
-          // iOS Safari momentum scroll is excellent on its own; smoothing
-          // touch input on top can feel laggy.
-          smoothTouch: 0,
-          // Parse data-speed / data-lag attributes for parallax effects.
-          effects: true,
-          // Quiets scroll-jank from address-bar resize and similar.
-          normalizeScroll: true,
-        });
+      mm.add(
+        "(min-width: 1024px) and (prefers-reduced-motion: no-preference)",
+        () => {
+          ScrollSmoother.create({
+            wrapper: "#smooth-wrapper",
+            content: "#smooth-content",
+            // 1.0 ≈ tight, gsap.com-style. Higher = floatier.
+            smooth: 1.0,
+            // iOS Safari momentum scroll is excellent on its own; smoothing
+            // touch input on top can feel laggy.
+            smoothTouch: 0,
+            // Parse data-speed / data-lag attributes for parallax effects.
+            effects: true,
+            // Quiets scroll-jank from address-bar resize and similar.
+            normalizeScroll: true,
+          });
 
-        // Child useGSAP hooks ran first (React effects fire bottom-up);
-        // their triggers were registered against window scroll. Re-measure
-        // them now that the smoother is wrapping the page.
-        ScrollTrigger.refresh();
+          // Child useGSAP hooks ran first (React effects fire bottom-up);
+          // their triggers were registered against window scroll. Re-measure
+          // them now that the smoother is wrapping the page.
+          ScrollTrigger.refresh();
 
-        // matchMedia cleanup: kill the smoother when we drop below lg so
-        // its normalizeScroll touch-action mutations don't strand mobile.
-        return () => {
-          ScrollSmoother.get()?.kill();
-        };
-      }
-    );
-  });
+          // matchMedia cleanup: kill the smoother when we drop below lg so
+          // its normalizeScroll touch-action mutations don't strand mobile.
+          return () => {
+            ScrollSmoother.get()?.kill();
+          };
+        }
+      );
+    },
+    { dependencies: [smootherEnabled] },
+  );
 
   // ScrollSmoother owns scroll position via transforms on #smooth-content,
   // so Next's default scroll-restoration-on-nav doesn't reach it. Snap to
