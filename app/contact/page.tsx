@@ -53,16 +53,20 @@ export default function ContactPage() {
                   working days &mdash; usually faster.
                 </p>
               </div>
-              {/* Illustration sized to balance the 88px headline — max-h
-                  caps the tall SVG so it doesn't push the row height; width
-                  steps follow the Tailwind default scale per design rules. */}
+              {/* Illustration. width/height MUST mirror the SVG's natural
+                  viewBox (247 x 424 = ~0.583 aspect, tall figure). The SVG
+                  ships with preserveAspectRatio="none", which means it
+                  will stretch to whatever box next/image gives it — passing
+                  a wrong aspect ratio here is what was squashing the figure
+                  horizontally. Constrain only width via Tailwind + h-auto so
+                  next/image preserves the aspect at every breakpoint. */}
               <div data-reveal className="flex justify-center lg:justify-end">
                 <Image
                   src="/images/girl-2.svg"
                   alt=""
-                  width={300}
-                  height={320}
-                  className="h-auto max-h-96 w-48 object-contain sm:w-56 lg:w-64"
+                  width={247}
+                  height={424}
+                  className="h-auto w-32 sm:w-40 lg:w-44"
                   priority
                 />
               </div>
