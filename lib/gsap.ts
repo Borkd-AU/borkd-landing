@@ -1,39 +1,20 @@
 "use client";
 
 /**
- * Single registration point for GSAP plugins this project actually
- * uses. Keep this list lean — registering every Club GSAP plugin
- * pulls dev/helper code (GSDevTools, MotionPathHelper, EaselPlugin,
- * etc.) into the production bundle for no benefit.
+ * Core GSAP entrypoint. Re-exports the base library only — no plugins
+ * registered. Files that need plugins import from the named plugin
+ * entrypoints alongside this one:
  *
- * To add a new plugin:
- *   1. import it from "gsap/<Name>"
- *   2. add it to the `gsap.registerPlugin(...)` call below
- *   3. re-export it for downstream callers
+ *   import { gsap } from "@/lib/gsap";
+ *   import { ScrollTrigger, ScrollSmoother, ScrollToPlugin } from "@/lib/gsap-scroll";
+ *   import { SplitText } from "@/lib/gsap-split";
+ *   import { useGSAP } from "@/lib/gsap-react";
  *
- * Idempotent — registerPlugin de-dupes internally.
+ * Each plugin entrypoint calls registerPlugin idempotently when imported,
+ * so registration cost is paid only by the code paths that need it. A
+ * component that only tweens (e.g. TiltSpotlightCard) no longer pulls
+ * ScrollTrigger/ScrollSmoother/SplitText into its chunk.
  */
 import { gsap } from "gsap";
-import { useGSAP } from "@gsap/react";
 
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ScrollSmoother } from "gsap/ScrollSmoother";
-import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { SplitText } from "gsap/SplitText";
-
-gsap.registerPlugin(
-  useGSAP,
-  ScrollTrigger,
-  ScrollSmoother,
-  ScrollToPlugin,
-  SplitText
-);
-
-export {
-  gsap,
-  useGSAP,
-  ScrollTrigger,
-  ScrollSmoother,
-  ScrollToPlugin,
-  SplitText,
-};
+export { gsap };
