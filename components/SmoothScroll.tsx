@@ -35,24 +35,17 @@ import {
  * Skipped for `prefers-reduced-motion: reduce` — those users keep
  * native browser scrolling on every viewport.
  */
-// ScrollSmoother is ONLY worth its complexity on the home page, where the
-// Steps section needs pinned horizontal pans synced to a single RAF clock.
-// Subpages (about, for-venues, contact, privacy, terms) are static text —
-// they don't benefit from smooth scrolling, and the smoother actively
-// breaks per-element viewport math because it makes #smooth-wrapper
-// position:fixed and translates #smooth-content. getBoundingClientRect on
-// any descendant then reports coords relative to the transformed wrapper,
-// not the viewport, which silently breaks IntersectionObserver-equivalent
-// hand-rolled tracking (e.g. the floating TOC on /privacy and /terms).
-const SMOOTHER_ROUTES = new Set(["/"]);
-
+// ScrollSmoother runs on every page (desktop, motion-allowed). Subpages
+// don't benefit much from the smoothing itself, but global activation
+// keeps page-to-page scroll feel consistent. Anything that hand-rolls
+// element-position math (e.g. ReadingShell's TOC tracking) must read
+// coords via the smoother's API instead of getBoundingClientRect — see
+// ReadingShell.tsx for the pattern.
 export function SmoothScroll() {
   const pathname = usePathname();
-  const smootherEnabled = SMOOTHER_ROUTES.has(pathname);
 
   useGSAP(
     () => {
-      if (!smootherEnabled) return;
       const mm = gsap.matchMedia();
 
       mm.add(
@@ -85,7 +78,6 @@ export function SmoothScroll() {
         }
       );
     },
-    { dependencies: [smootherEnabled] },
   );
 
   // ScrollSmoother owns scroll position via transforms on #smooth-content,

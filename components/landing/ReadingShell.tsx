@@ -80,19 +80,8 @@ export function ReadingShell({ children }: Props) {
     });
     setEntries(list);
 
-    // Initial active = the heading currently above the activation line.
-    // Without this, nothing is highlighted on first paint.
-    requestAnimationFrame(() => {
-      const top = window.scrollY + window.innerHeight * 0.3;
-      let current: string | null = list[0]?.id ?? null;
-      for (let i = 0; i < headings.length; i++) {
-        const h = headings[i];
-        const y = h.getBoundingClientRect().top + window.scrollY;
-        if (y <= top) current = list[i].id;
-        else break;
-      }
-      setActiveId(current);
-    });
+    // Initial active state is set by the syncToc() call at the bottom of
+    // this effect — duplicate up-front computation was removed.
 
     // Per-frame fallback + footer-overlap fix, both on the gsap ticker so
     // they ride the same RAF clock as ScrollSmoother (and degrade cleanly
@@ -131,6 +120,22 @@ export function ReadingShell({ children }: Props) {
     // same active/inactive class pair, so one source of truth here.
     const activeCls = ["border-content-accent", "text-content-brand"];
     const inactiveCls = ["border-transparent", "text-content-primary/60"];
+
+    // Coordinate helper. When ScrollSmoother is active it transforms the
+    // #smooth-content wrapper, which makes plain getBoundingClientRect()
+    // return rects relative to that wrapper instead of the viewport.
+    // smoother.offset(el) returns the element's natural doc-y, so
+    // subtracting smoother.scrollTop() gives true viewport-y. When the
+    // smoother is absent (reduced motion / below lg), fall back to the
+    // browser's native rect.
+    function viewportTop(el: Element): number {
+      const smoother = ScrollSmoother.get();
+      if (smoother) {
+        return smoother.offset(el as HTMLElement) - smoother.scrollTop();
+      }
+      return el.getBoundingClientRect().top;
+    }
+
     function syncToc() {
       // 1. Active section — scan back-to-front for the last heading whose
       //    top is at or above the probe line. This naturally handles both
@@ -138,7 +143,7 @@ export function ReadingShell({ children }: Props) {
       //    all sit above the probe simultaneously — the latest one wins).
       let idx = -1;
       for (let i = headings.length - 1; i >= 0; i--) {
-        if (headings[i].getBoundingClientRect().top <= probeFromTop) {
+        if (viewportTop(headings[i]) <= probeFromTop) {
           idx = i;
           break;
         }
@@ -177,7 +182,7 @@ export function ReadingShell({ children }: Props) {
       //    margin so the transition begins just before cream appears.
       const footerEl = document.querySelector("footer");
       const footerTop = footerEl
-        ? footerEl.getBoundingClientRect().top
+        ? viewportTop(footerEl)
         : Number.POSITIVE_INFINITY;
       // Fade-out fires when the footer has entered the lower ~30% of the
       // viewport (footerTop < innerHeight * 0.7). That's late enough to
