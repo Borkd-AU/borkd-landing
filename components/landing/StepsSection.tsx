@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useRef } from "react";
-import { gsap, useGSAP, ScrollTrigger } from "@/lib/gsap";
+import { gsap } from "@/lib/gsap";
+import { useGSAP } from "@/lib/gsap-react";
+import { ScrollTrigger } from "@/lib/gsap-scroll";
 import { StepCard } from "./StepCard";
 
 const steps = [

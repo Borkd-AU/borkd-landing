@@ -23,7 +23,9 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { gsap, ScrollTrigger, ScrollSmoother, ScrollToPlugin } from "@/lib/gsap";
+import { gsap } from "@/lib/gsap";
+import { ScrollTrigger, ScrollSmoother, ScrollToPlugin } from "@/lib/gsap-scroll";
+import { slugify } from "@/lib/slugify";
 
 interface TocEntry {
   id: string;
@@ -32,14 +34,6 @@ interface TocEntry {
 
 interface Props {
   children: ReactNode;
-}
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
 }
 
 export function ReadingShell({ children }: Props) {
@@ -67,12 +61,20 @@ export function ReadingShell({ children }: Props) {
     const headings = Array.from(root.querySelectorAll<HTMLHeadingElement>("h2"));
     const seen = new Set<string>();
     const list: TocEntry[] = headings.map((h) => {
-      const base = slugify(h.textContent ?? "");
-      let id = base || "section";
-      let n = 2;
-      while (seen.has(id)) id = `${base}-${n++}`;
+      // Prefer the server-rendered id (legal pages set it on the h2 at
+      // SSR time so direct hash links work pre-hydration and for no-JS
+      // visitors). Fall back to runtime slugify only if the server
+      // didn't set one — keeps this resilient to mixed-source content.
+      const ssrId = h.id;
+      let id = ssrId;
+      if (!id) {
+        const base = slugify(h.textContent ?? "");
+        id = base || "section";
+        let n = 2;
+        while (seen.has(id)) id = `${base}-${n++}`;
+        h.id = id;
+      }
       seen.add(id);
-      h.id = id;
       // Pad the scroll-anchor so the highlighted h2 doesn't sit jammed
       // under the floating nav pill after a click jump.
       h.style.scrollMarginTop = "120px";
@@ -99,21 +101,6 @@ export function ReadingShell({ children }: Props) {
     //      footer, and the floating TOC has no business being there.
     //      Fade opacity to 0 + disable pointer events.
     const articleEl = articleRef.current;
-    // Activation line: the y-coordinate (from viewport top) above which a
-    // heading is considered "passed" and therefore active. We pick the
-    // most recent heading whose top is <= this value.
-    //
-    // Originally we used 140px (just below the floating nav). That works on
-    // dense pages but fails on long pages with short tail sections: when
-    // the user has scrolled so much that 3+ sections fit in the viewport
-    // simultaneously, only the one whose top crossed the 140px line gets
-    // active — even though the visually-dominant section is lower down.
-    //
-    // Using 45% of the viewport height tracks what the user is actually
-    // *reading* (centre of attention) rather than what's at the top of
-    // the chrome. Tested with the 12-heading /privacy and 14-heading
-    // /terms layouts.
-    const probeFromTop = Math.round(window.innerHeight * 0.45);
     let lastActiveIdx = -1;
     let tocHidden = false;
     // Active classes — both desktop side rail and mobile pill use the
@@ -121,29 +108,64 @@ export function ReadingShell({ children }: Props) {
     const activeCls = ["border-content-accent", "text-content-brand"];
     const inactiveCls = ["border-transparent", "text-content-primary/60"];
 
-    // Coordinate helper. When ScrollSmoother is active it transforms the
-    // #smooth-content wrapper, which makes plain getBoundingClientRect()
-    // return rects relative to that wrapper instead of the viewport.
-    // smoother.offset(el) returns the element's natural doc-y, so
-    // subtracting smoother.scrollTop() gives true viewport-y. When the
-    // smoother is absent (reduced motion / below lg), fall back to the
-    // browser's native rect.
-    function viewportTop(el: Element): number {
+    // Cached document-y offsets. Computing smoother.offset(el) for every
+    // heading on every tick is expensive — GSAP internally creates and
+    // kills a ScrollTrigger per call. Instead we measure each element's
+    // document-y once at mount + on resize, and only read the cheap
+    // smoother.scrollTop() (or window.scrollY) per tick.
+    let headingOffsets: number[] = [];
+    let footerOffset = Number.POSITIVE_INFINITY;
+    function measureOffsets() {
       const smoother = ScrollSmoother.get();
       if (smoother) {
-        return smoother.offset(el as HTMLElement) - smoother.scrollTop();
+        headingOffsets = headings.map((h) => smoother.offset(h));
+        const footerEl = document.querySelector("footer");
+        footerOffset = footerEl
+          ? smoother.offset(footerEl as HTMLElement)
+          : Number.POSITIVE_INFINITY;
+      } else {
+        // No smoother — use raw doc coords (rect.top + scrollY).
+        const scrollY = window.scrollY;
+        headingOffsets = headings.map(
+          (h) => h.getBoundingClientRect().top + scrollY,
+        );
+        const footerEl = document.querySelector("footer");
+        footerOffset = footerEl
+          ? footerEl.getBoundingClientRect().top + scrollY
+          : Number.POSITIVE_INFINITY;
       }
-      return el.getBoundingClientRect().top;
     }
+    function currentScrollY(): number {
+      const smoother = ScrollSmoother.get();
+      return smoother ? smoother.scrollTop() : window.scrollY;
+    }
+    // Initial measure synchronously so syncToc's first call has data,
+    // then re-measure after two RAFs once ScrollSmoother / ScrollTrigger
+    // have refreshed against the laid-out content. Without the deferred
+    // re-measure, initial heading offsets can be off by hundreds of
+    // pixels on long pages (layout hadn't settled at effect time).
+    measureOffsets();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => measureOffsets());
+    });
 
     function syncToc() {
+      // Probe + scroll position re-read every tick so viewport resize
+      // and live scroll position both reflect immediately. Probe at 45%
+      // of viewport tracks what the user is actually reading (centre of
+      // attention) rather than what's at the top chrome — important
+      // for long pages with short tail sections where multiple sections
+      // fit in the viewport simultaneously.
+      const probeFromTop = Math.round(window.innerHeight * 0.45);
+      const scrollY = currentScrollY();
+      const viewportH = window.innerHeight;
+
       // 1. Active section — scan back-to-front for the last heading whose
-      //    top is at or above the probe line. This naturally handles both
-      //    middle-of-page and bottom-of-page (where multiple headings may
-      //    all sit above the probe simultaneously — the latest one wins).
+      //    top is at or above the probe line. Uses cached doc-y offsets
+      //    minus current scroll position; no per-tick layout reads.
       let idx = -1;
       for (let i = headings.length - 1; i >= 0; i--) {
-        if (viewportTop(headings[i]) <= probeFromTop) {
+        if (headingOffsets[i] - scrollY <= probeFromTop) {
           idx = i;
           break;
         }
@@ -180,25 +202,13 @@ export function ReadingShell({ children }: Props) {
       //    soon as ANY cream area enters the viewport from the bottom.
       //    Use footerTop < viewportHeight as the signal, with a small
       //    margin so the transition begins just before cream appears.
-      const footerEl = document.querySelector("footer");
-      const footerTop = footerEl
-        ? viewportTop(footerEl)
-        : Number.POSITIVE_INFINITY;
+      // Footer viewport-y from cached doc offset minus current scroll.
+      const footerTop = footerOffset - scrollY;
       // Fade-out fires when the footer has entered the lower ~30% of the
-      // viewport (footerTop < innerHeight * 0.7). That's late enough to
-      // keep TOC visible while the user is reading the last section, but
-      // early enough to clear it before the page hits its scroll max.
-      // Empirically validated on /terms (innerHeight 772):
-      //   scrollY=2700 footerTop=877 (>540) → visible (still reading Contact)
-      //   scrollY=2850 footerTop=727 (>540) → visible
-      //   scrollY=2950 footerTop=627 (>540) → visible
-      //   scrollY=3067 footerTop=510 (<540) → hidden (page bottom)
-      // Cross-checked by Codex with the same numbers — `0.5` variants
-      // never fire at max scroll on this layout, and articleBottom-based
-      // gates have the same problem. 0.7 is the cleanest one-expression
-      // gate that satisfies both "stay visible while reading" and "hide
-      // at the actual end of the page".
-      const shouldHide = footerTop < window.innerHeight * 0.7;
+      // viewport (footerTop < innerHeight * 0.7). Late enough to keep
+      // TOC visible while reading last section, early enough to clear
+      // before scroll max. Cross-checked empirically on /terms.
+      const shouldHide = footerTop < viewportH * 0.7;
       if (shouldHide !== tocHidden) {
         tocHidden = shouldHide;
         if (tocRef.current) {
@@ -245,20 +255,37 @@ export function ReadingShell({ children }: Props) {
         syncToc();
       }, 16);
     }
+    // Resize handler: re-measure offsets (heights and section positions
+    // can shift when the viewport width changes — e.g. text reflows)
+    // AND re-run syncToc so probe + visibility track immediately.
+    function onResize() {
+      measureOffsets();
+      schedule();
+    }
     syncToc(); // initial paint
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
+    window.addEventListener("resize", onResize);
     const io = new IntersectionObserver(
       () => schedule(),
       { rootMargin: "0px", threshold: [0, 0.5, 1] },
     );
     headings.forEach((h) => io.observe(h));
     if (articleEl) io.observe(articleEl);
-    const safetyTick = window.setInterval(schedule, 500);
+    // Safety tick also re-measures occasionally — defends against late
+    // layout shifts (font load, image dimensions resolving) we didn't
+    // see at mount time.
+    let measureSafetyCount = 0;
+    const safetyTick = window.setInterval(() => {
+      // Re-measure every ~4 ticks (2s) — cheap insurance against late
+      // layout shifts (font load, image dimensions resolving, hot
+      // reload). Per-tick measure would be wasteful.
+      if (++measureSafetyCount % 4 === 0) measureOffsets();
+      schedule();
+    }, 500);
 
     return () => {
       window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", onResize);
       io.disconnect();
       window.clearInterval(safetyTick);
       if (scheduledTimer != null) window.clearTimeout(scheduledTimer);

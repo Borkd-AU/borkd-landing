@@ -51,8 +51,20 @@ export function TiltSpotlightCard({ number, title, children }: Props) {
       ease: TILT_EASE,
     });
 
+    // Cache the bounding rect — reading it per pointermove is a forced
+    // synchronous layout in a high-frequency event handler. We refresh
+    // on pointerenter (the most common entry point) and on resize.
+    // Scroll position also moves the rect, but scroll + tilt at the
+    // same time is rare; per-enter is enough in practice.
+    let rect = el.getBoundingClientRect();
+    function refreshRect() {
+      rect = el!.getBoundingClientRect();
+    }
+
+    function onEnter() {
+      refreshRect();
+    }
     function onMove(e: PointerEvent) {
-      const rect = el!.getBoundingClientRect();
       const px = (e.clientX - rect.left) / rect.width; // 0..1
       const py = (e.clientY - rect.top) / rect.height; // 0..1
       // Map to ±MAX_TILT_DEG. rotateX is flipped so pushing the cursor
@@ -71,11 +83,15 @@ export function TiltSpotlightCard({ number, title, children }: Props) {
       el!.style.setProperty("--spotlight-opacity", "0");
     }
 
+    el.addEventListener("pointerenter", onEnter);
     el.addEventListener("pointermove", onMove);
     el.addEventListener("pointerleave", onLeave);
+    window.addEventListener("resize", refreshRect);
     return () => {
+      el.removeEventListener("pointerenter", onEnter);
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("resize", refreshRect);
     };
   }, []);
 

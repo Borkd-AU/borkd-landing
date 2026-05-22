@@ -2,12 +2,9 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import {
-  gsap,
-  useGSAP,
-  ScrollSmoother,
-  ScrollTrigger,
-} from "@/lib/gsap";
+import { gsap } from "@/lib/gsap";
+import { useGSAP } from "@/lib/gsap-react";
+import { ScrollSmoother, ScrollTrigger } from "@/lib/gsap-scroll";
 
 /**
  * Page-wide momentum/easing powered by GSAP's own ScrollSmoother —

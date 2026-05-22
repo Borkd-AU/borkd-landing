@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
+import { gsap } from '@/lib/gsap'
 import {
   MAX_STRETCH,
   SNIFF_AFTER_MS,
@@ -222,11 +222,17 @@ export default function CursorDog() {
         if (bobRef.current) {
           turning = true
           const el = bobRef.current
-          gsap.timeline({
-            onComplete: () => { turning = false },
+          // ctx.add() captures this timeline so ctx.revert() in cleanup
+          // kills it. Without that capture, a turn-in-flight at unmount
+          // (or during the StrictMode double-mount) keeps running on a
+          // detached SVG node — a real leak Codex flagged.
+          ctx.add(() => {
+            gsap.timeline({
+              onComplete: () => { turning = false },
+            })
+              .to(el, { scaleX: 0, duration: TURN_SQUASH_MS, ease: 'power2.in' })
+              .to(el, { scaleX: desiredFacing, duration: TURN_STRETCH_MS, ease: 'back.out(1.4)' })
           })
-            .to(el, { scaleX: 0, duration: TURN_SQUASH_MS, ease: 'power2.in' })
-            .to(el, { scaleX: desiredFacing, duration: TURN_STRETCH_MS, ease: 'back.out(1.4)' })
         }
       }
 
@@ -426,6 +432,10 @@ export default function CursorDog() {
       sm.timelineRefs.barkTimelineRef.current = null
       sm.timelineRefs.sniffTimelineRef.current?.kill()
       sm.timelineRefs.sniffTimelineRef.current = null
+      // trotOffscreen creates a tween outside ctx (same callback-scope
+      // reason as the timelines above). Explicit kill prevents it from
+      // continuing to translate a detached <g> after unmount.
+      sm.killTrotTween()
       ctx.revert()
       controller.abort()
       sm.pendingTimers.forEach((h) => clearTimeout(h))

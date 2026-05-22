@@ -1,5 +1,5 @@
 // components/landing/CursorDog/useDogStateMachine.ts
-import { gsap } from 'gsap'
+import { gsap } from '@/lib/gsap'
 import {
   BARK_MIN_MS,
   BARK_MAX_MS,
@@ -22,6 +22,8 @@ export interface StateMachineHandle {
   pendingTimers: Set<number>
   /** Timeline refs — caller's cleanup is ctx.revert(), but these are used by transitions */
   timelineRefs: TimelineRefs
+  /** Kill any in-flight trot tween. Caller's cleanup MUST call this on unmount. */
+  killTrotTween: () => void
   /** Setup runs inside the caller's gsap.context() to wire scheduling */
   setup: () => void
 }
@@ -35,6 +37,10 @@ export function createDogStateMachine(
   let barkTimerHandle: number | null = null
   const barkTimelineRef: TimelineRefs['barkTimelineRef'] = { current: null }
   const sniffTimelineRef: TimelineRefs['sniffTimelineRef'] = { current: null }
+  // trotOffscreen() creates a tween outside the controller's gsap.context,
+  // so ctx.revert() in the cleanup path can't reach it. Track it here so
+  // the cleanup can explicitly kill it on unmount / route change.
+  let trotTween: gsap.core.Tween | null = null
 
   function scheduleBark(): void {
     if (barkTimerHandle != null) return
@@ -115,11 +121,20 @@ export function createDogStateMachine(
     // No opacity fade — the dog is offscreen during PARKED anyway, and a fade
     // here only manifests on return as "the dog came back lighter". Keep the
     // trot itself but leave opacity at 1.0 throughout.
-    gsap.to(refs.dogRef.current, {
+    // Kill any in-flight previous trot first so we don't leak a tween if
+    // the dog is re-parked while still trotting out.
+    trotTween?.kill()
+    trotTween = gsap.to(refs.dogRef.current, {
       x: window.innerWidth + 32,
       duration: 0.6,
       ease: 'power2.in',
+      onComplete: () => { trotTween = null },
     })
+  }
+
+  function killTrotTween(): void {
+    trotTween?.kill()
+    trotTween = null
   }
 
   function resetLastMoveAt(): void {
@@ -175,6 +190,7 @@ export function createDogStateMachine(
     triggerBark,
     pendingTimers,
     timelineRefs: { barkTimelineRef, sniffTimelineRef },
+    killTrotTween,
     setup,
   }
 }

@@ -10,7 +10,8 @@
  * Tuning lives here so subpages just sprinkle the attribute and forget.
  */
 import { useEffect, type RefObject } from "react";
-import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { gsap } from "@/lib/gsap";
+import { ScrollTrigger } from "@/lib/gsap-scroll";
 
 interface Options {
   /** y-distance the element rises through (px). Default 18 — small enough to read as breath, not motion. */
@@ -43,13 +44,20 @@ export function useGsapReveal(
     if (targets.length === 0) return;
 
     if (reduced) {
-      // Make sure nothing ships hidden — instant visible, no animation.
+      // Reduced motion: globals.css already shows [data-reveal] at full
+      // opacity for this preference, so we just need to undo any
+      // transform we might have applied if the preference flipped after
+      // mount. Cheap defensive set.
       gsap.set(targets, { opacity: 1, y: 0, clearProps: "transform" });
       return;
     }
 
-    // Initial hidden state. Important: set BEFORE batch creates triggers so
-    // the user never sees a flash of fully-visible content on mount.
+    // Initial hidden state is owned by globals.css ([data-reveal]
+    // { opacity: 0; transform: translate3d(0, 18px, 0) }). That CSS
+    // applies at first paint, before this effect runs, so SSR HTML
+    // doesn't flash-then-hide. We sync GSAP's view of the value here
+    // (so its tween starts from the right place) without re-setting
+    // visibility from scratch.
     gsap.set(targets, { opacity: 0, y: distance });
 
     const triggers = ScrollTrigger.batch(targets, {

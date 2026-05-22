@@ -47,8 +47,10 @@ export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, roo
           fill="none"
         />
         {/* Dog — dogRef.x/y written by quickTo. Wrapper for cursor follow only.
-            scale 1.2 renders the dog at ~37×31 CSS px (intrinsic viewBox 31x26). */}
-        <g ref={dogRef as Ref<SVGGElement>} transform="translate(0,0) scale(1.2)">
+            scale 1.2 renders the dog at ~37×31 CSS px (intrinsic viewBox 31x26).
+            opacity=0 at SSR so the dog never paints at (0,0) before the
+            controller's entryTrot positions it offscreen and tweens it in. */}
+        <g ref={dogRef as Ref<SVGGElement>} transform="translate(0,0) scale(1.2)" opacity={0}>
           {/* bobRef — sniff bob lives here (y += 4). Separate from dogRef so the
               baseline reset (PAUSED_INPUT / PARKED entry) only zeros bobRef.y
               and never zaps the cursor-follow position. Spec round-7. */}
