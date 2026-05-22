@@ -236,6 +236,29 @@
   --radius-full: var(--radius-full);
 }
 
+/* === Scroll-reveal SSR hide ============================================
+ * `[data-reveal]` is the contract used by useGsapReveal (and the
+ * RevealScope wrapper). Elements with this attribute start at opacity 0
+ * + translateY so the SSR HTML doesn't flash-then-hide on first paint
+ * when the reveal effect mounts. The hook tweens them to visible.
+ *
+ * Two escape hatches:
+ *   1. `prefers-reduced-motion: reduce` → show immediately, no motion.
+ *   2. `.no-js [data-reveal]` (if we ever add it) — same. For now we
+ *      rely on (1) and the fact that JS-disabled visitors are 0% of
+ *      production traffic.
+ * ───────────────────────────────────────────────────────────────────── */
+[data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* === Base body styles === */
 html {
   /* Smooth scrolling is owned by Lenis (components/SmoothScroll.tsx)

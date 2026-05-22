@@ -1,8 +1,9 @@
-"use client";
-
 /**
  * BigLinkRow — a single editorial inbox row. Used by /contact and other
  * places that want a row-list instead of a card grid.
+ *
+ * Server component — no hooks, no event handlers, just markup with CSS
+ * hover. Keeps /contact's bundle slim.
  *
  * Layout: a big display headline on the left, a small uppercase eyebrow
  * label on the right. On desktop (pointer: fine) hover, the row gets:

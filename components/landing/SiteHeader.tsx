@@ -53,7 +53,7 @@ export function SiteHeader() {
           src="/images/header-bg.jpg"
           alt=""
           fill
-          priority
+          preload
           sizes="100vw"
           quality={90}
           className="object-cover object-center lg:object-fill lg:object-bottom"
@@ -82,7 +82,7 @@ export function SiteHeader() {
             alt="A person walking with their dog jojo"
             width={526}
             height={355}
-            priority
+            preload
             sizes="(max-width: 640px) 260px, (max-width: 1024px) 420px, 526px"
             className="h-auto w-[clamp(220px,55vw,360px)] lg:w-[clamp(360px,40vw,526px)]"
           />
@@ -145,7 +145,7 @@ export function SiteHeaderAlt() {
           src="/images/header-bg-alt.webp"
           alt=""
           fill
-          priority
+          preload
           sizes="100vw"
           quality={90}
           className="object-cover object-center"
@@ -157,12 +157,17 @@ export function SiteHeaderAlt() {
             short landscape viewport (e.g. 768×600).
             Desktop (Figma ≥lg): left 47.6%, bottom 7.6%, w 15.8%. */}
         <div className="absolute left-[6%] bottom-[6%] z-10 max-h-[22vh] w-[38%] max-w-[260px] lg:left-[47.6%] lg:bottom-[7.6%] lg:max-h-none lg:w-[15.8%] lg:max-w-none">
+          {/* `preload` prop intentionally omitted — these SVGs are
+              preloaded via the manual ReactDOM.preload calls above,
+              which emit the actual <link rel="preload"> that the
+              browser preload scanner picks up. next/image's `preload`
+              prop does not emit a link for SVGs in Next 16, so leaving
+              both would just be redundant DOM noise. */}
           <Image
             src="/images/golden-retriever.svg"
             alt=""
             width={227}
             height={191}
-            priority
             className="h-full w-full object-contain object-bottom lg:h-auto"
           />
         </div>
@@ -172,12 +177,13 @@ export function SiteHeaderAlt() {
             half of a short viewport instead of pushing past the headline.
             Desktop (Figma ≥lg): left 70%, bottom 7.2%, w 17.2%. */}
         <div className="absolute right-[2%] bottom-[5%] z-10 max-h-[40vh] w-[46%] max-w-[300px] lg:left-[70%] lg:right-auto lg:bottom-[7.2%] lg:max-h-none lg:w-[17.2%] lg:max-w-none">
+          {/* `preload` prop intentionally omitted — see comment above
+              the golden-retriever Image for the same reason. */}
           <Image
             src="/images/girl-2.svg"
             alt="A person walking their dog"
             width={247}
             height={424}
-            priority
             className="h-full w-full object-contain object-bottom lg:h-auto"
           />
         </div>

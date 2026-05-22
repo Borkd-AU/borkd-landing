@@ -67,7 +67,7 @@ export default function ContactPage() {
                   width={247}
                   height={424}
                   className="h-auto w-32 sm:w-40 lg:w-44"
-                  priority
+                  preload
                 />
               </div>
             </section>
