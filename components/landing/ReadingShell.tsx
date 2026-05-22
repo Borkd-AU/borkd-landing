@@ -26,6 +26,7 @@ import { createPortal } from "react-dom";
 import { gsap } from "@/lib/gsap";
 import { ScrollTrigger, ScrollSmoother, ScrollToPlugin } from "@/lib/gsap-scroll";
 import { slugify } from "@/lib/slugify";
+import { getActiveIdx, shouldShowToc } from "./readingState";
 
 interface TocEntry {
   id: string;
@@ -82,24 +83,13 @@ export function ReadingShell({ children }: Props) {
     });
     setEntries(list);
 
-    // Initial active state is set by the syncToc() call at the bottom of
-    // this effect — duplicate up-front computation was removed.
-
-    // Per-frame fallback + footer-overlap fix, both on the gsap ticker so
-    // they ride the same RAF clock as ScrollSmoother (and degrade cleanly
-    // when it isn't present). Two responsibilities:
-    //
-    //   1. Tail-section activation: the per-heading ScrollTriggers above
-    //      can't fire for sections at the very bottom of the page —
-    //      their tops can't reach the 30% line because the page ends
-    //      first. So every tick we ALSO scan headings and force-activate
-    //      whichever heading sits closest to (but not below) the top of
-    //      the viewport. This redundantly handles the middle of the page
-    //      too — cheap (read-only getBoundingClientRect) and bulletproof.
-    //   2. Footer fade: detect when the article's bottom edge has passed
-    //      the top of the viewport. Once it has, the user is reading the
-    //      footer, and the floating TOC has no business being there.
-    //      Fade opacity to 0 + disable pointer events.
+    // Active index + visibility are computed by pure functions in
+    // ./readingState.ts. The math (probe scan + tail region rule +
+    // terminal snap + visibility) is unit-tested in
+    // readingState.test.ts and the invariant ("every TOC entry is
+    // active for some reachable scrollY") is pinned there. Anything
+    // in this effect is just plumbing: cache offsets, sample scroll,
+    // call the pure functions, push results to the DOM.
     const articleEl = articleRef.current;
     let lastActiveIdx = -1;
     let tocHidden = false;
@@ -113,15 +103,23 @@ export function ReadingShell({ children }: Props) {
     // kills a ScrollTrigger per call. Instead we measure each element's
     // document-y once at mount + on resize, and only read the cheap
     // smoother.scrollTop() (or window.scrollY) per tick.
+    //
+    // Visibility uses articleBottomOffset (the bottom edge of the
+    // article container we own), NOT a global document.querySelector
+    // for <footer>. ReadingShell wraps article content; the page
+    // chrome that wraps it owns the footer. Coupling to that
+    // external element via DOM querying makes the visibility rule
+    // brittle (it broke on /privacy and /terms because tail sections
+    // sit close to the footer offset, hiding the TOC before the
+    // active indicator could catch up).
     let headingOffsets: number[] = [];
-    let footerOffset = Number.POSITIVE_INFINITY;
+    let articleBottomOffset = Number.POSITIVE_INFINITY;
     function measureOffsets() {
       const smoother = ScrollSmoother.get();
       if (smoother) {
         headingOffsets = headings.map((h) => smoother.offset(h));
-        const footerEl = document.querySelector("footer");
-        footerOffset = footerEl
-          ? smoother.offset(footerEl as HTMLElement)
+        articleBottomOffset = articleEl
+          ? smoother.offset(articleEl) + articleEl.offsetHeight
           : Number.POSITIVE_INFINITY;
       } else {
         // No smoother — use raw doc coords (rect.top + scrollY).
@@ -129,15 +127,25 @@ export function ReadingShell({ children }: Props) {
         headingOffsets = headings.map(
           (h) => h.getBoundingClientRect().top + scrollY,
         );
-        const footerEl = document.querySelector("footer");
-        footerOffset = footerEl
-          ? footerEl.getBoundingClientRect().top + scrollY
-          : Number.POSITIVE_INFINITY;
+        if (articleEl) {
+          const rect = articleEl.getBoundingClientRect();
+          articleBottomOffset = rect.bottom + scrollY;
+        } else {
+          articleBottomOffset = Number.POSITIVE_INFINITY;
+        }
       }
     }
     function currentScrollY(): number {
       const smoother = ScrollSmoother.get();
       return smoother ? smoother.scrollTop() : window.scrollY;
+    }
+    function currentScrollMax(): number {
+      // ScrollSmoother and native scrolling both report the same
+      // document height; scrollMax is doc - viewport regardless.
+      return Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
     }
     // Initial measure synchronously so syncToc's first call has data,
     // then re-measure after two RAFs once ScrollSmoother / ScrollTrigger
@@ -150,28 +158,22 @@ export function ReadingShell({ children }: Props) {
     });
 
     function syncToc() {
-      // Probe + scroll position re-read every tick so viewport resize
-      // and live scroll position both reflect immediately. Probe at 45%
-      // of viewport tracks what the user is actually reading (centre of
-      // attention) rather than what's at the top chrome — important
-      // for long pages with short tail sections where multiple sections
-      // fit in the viewport simultaneously.
-      const probeFromTop = Math.round(window.innerHeight * 0.45);
       const scrollY = currentScrollY();
       const viewportH = window.innerHeight;
+      const scrollMax = currentScrollMax();
+      const geometry = {
+        headings: headingOffsets.map((offset) => ({ offset })),
+        articleBottomOffset,
+        scrollY,
+        scrollMax,
+        viewportH,
+      };
 
-      // 1. Active section — scan back-to-front for the last heading whose
-      //    top is at or above the probe line. Uses cached doc-y offsets
-      //    minus current scroll position; no per-tick layout reads.
-      let idx = -1;
-      for (let i = headings.length - 1; i >= 0; i--) {
-        if (headingOffsets[i] - scrollY <= probeFromTop) {
-          idx = i;
-          break;
-        }
-      }
-      if (idx === -1) idx = 0;
-      if (idx !== lastActiveIdx) {
+      // Active and visibility are independent per their pure-function
+      // contract. Neither can gate the other — invariant guaranteed
+      // by the unit tests.
+      const idx = getActiveIdx(geometry);
+      if (idx !== -1 && idx !== lastActiveIdx) {
         lastActiveIdx = idx;
         const newId = list[idx].id;
         // React state path (kept for the mobile pill's headline text + a11y)
@@ -190,25 +192,7 @@ export function ReadingShell({ children }: Props) {
         });
       }
 
-      // 2. Visibility — fade out both the desktop sidebar AND the mobile
-      //    pill the moment the footer enters the viewport. Background
-      //    note: the <html> element paints cream (background-brand) as a
-      //    backstop for ScrollSmoother overscroll, while <main> paints
-      //    white. The TOC is fixed-positioned so it floats over whichever
-      //    background is behind it. Even when the TOC's box is strictly
-      //    above the <footer> element, the cream margin between main and
-      //    footer is visually identical to footer cream — the user reads
-      //    that as "TOC on top of footer". Easiest fix: hide the TOC as
-      //    soon as ANY cream area enters the viewport from the bottom.
-      //    Use footerTop < viewportHeight as the signal, with a small
-      //    margin so the transition begins just before cream appears.
-      // Footer viewport-y from cached doc offset minus current scroll.
-      const footerTop = footerOffset - scrollY;
-      // Fade-out fires when the footer has entered the lower ~30% of the
-      // viewport (footerTop < innerHeight * 0.7). Late enough to keep
-      // TOC visible while reading last section, early enough to clear
-      // before scroll max. Cross-checked empirically on /terms.
-      const shouldHide = footerTop < viewportH * 0.7;
+      const shouldHide = !shouldShowToc(geometry);
       if (shouldHide !== tocHidden) {
         tocHidden = shouldHide;
         if (tocRef.current) {
@@ -406,9 +390,9 @@ export function ReadingShell({ children }: Props) {
               </svg>
             </button>
 
-            {/* Expanded list. overflow-y-auto so long TOCs (terms has 14
-                headings) scroll inside the pill rather than overflowing
-                the viewport. */}
+            {/* Expanded list. overflow-y-auto so long TOCs scroll
+                inside the pill rather than overflowing the viewport
+                on legal pages with many h2s. */}
             <ul
               id="mobile-toc-list"
               className="max-h-[calc(60vh-3.5rem)] overflow-y-auto border-t border-border-muted px-5 py-3"
@@ -446,12 +430,10 @@ export function ReadingShell({ children }: Props) {
       <nav
         ref={tocRef}
         aria-label="Page contents"
-        // max-h + overflow-y-auto keeps the TOC bounded so it can't grow
-        // taller than the viewport on long terms-of-service pages (14
-        // headings). Without this the footer-push logic in syncToc would
-        // slide a 557px tall TOC up far enough that its top sails out of
-        // the viewport. With max-h-[calc(100vh-160px)] the TOC is at
-        // most ~640px on a 800px viewport — always fully visible.
+        // max-h + overflow-y-auto keeps the TOC bounded so it can't
+        // grow taller than the viewport on long legal pages. With
+        // max-h-[calc(100vh-10rem)] the TOC is at most viewport
+        // minus the 32px top offset and 32px bottom safety.
         className="pointer-events-none fixed top-32 z-40 hidden max-h-[calc(100vh-10rem)] overflow-y-auto transition-[top,opacity] duration-300 ease-out lg:left-4 lg:block lg:w-40 xl:left-8 xl:w-48"
       >
         {entries.length > 0 ? (
