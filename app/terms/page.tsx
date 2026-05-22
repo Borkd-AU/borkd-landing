@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { ReadingShell } from "@/components/landing/ReadingShell";
 import { RevealHeading } from "@/components/landing/RevealHeading";
+import { SectionHeading } from "@/components/landing/SectionHeading";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Borkd",
@@ -40,9 +41,7 @@ export default function TermsPage() {
             </p>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Who we are
-              </h2>
+              <SectionHeading>Who we are</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is an early-stage startup based in Sydney, Australia.
                 You can reach us at{" "}
@@ -57,9 +56,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                What Borkd is
-              </h2>
+              <SectionHeading>What Borkd is</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is a community-driven map for dog owners. Today, the
                 website allows you to learn about Borkd and join a waitlist.
@@ -70,9 +67,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Eligibility
-              </h2>
+              <SectionHeading>Eligibility</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 You must be at least 16 years old to use Borkd, or the
                 minimum age required in your country for online services,
@@ -81,9 +76,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Your account (when applicable)
-              </h2>
+              <SectionHeading>Your account (when applicable)</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 To use the Borkd app, you will need to create an account. You
                 agree to:
@@ -108,9 +101,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                User content
-              </h2>
+              <SectionHeading>User content</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 When the Borkd app launches, you may submit content — pins,
                 reviews, photos, votes, dog profiles, and similar
@@ -136,9 +127,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Acceptable use
-              </h2>
+              <SectionHeading>Acceptable use</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 You agree not to:
               </p>
@@ -169,9 +158,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Information accuracy
-              </h2>
+              <SectionHeading>Information accuracy</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is built on community contributions. We work hard to
                 keep information accurate and current, but we cannot
@@ -182,9 +169,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Intellectual property
-              </h2>
+              <SectionHeading>Intellectual property</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 The Borkd brand, name, logo, illustrations, design, and
                 software are owned by Borkd. You may not copy, modify, or
@@ -193,9 +178,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Third-party services
-              </h2>
+              <SectionHeading>Third-party services</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd uses third-party services to operate (for example,
                 mapping providers, hosting providers, and email tools). We
@@ -204,9 +187,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Disclaimers
-              </h2>
+              <SectionHeading>Disclaimers</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is provided &ldquo;as is&rdquo; without warranties of
                 any kind. To the fullest extent permitted by law, we disclaim
@@ -217,9 +198,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Limitation of liability
-              </h2>
+              <SectionHeading>Limitation of liability</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 To the fullest extent permitted by law, Borkd will not be
                 liable for any indirect, incidental, special, consequential,
@@ -235,9 +214,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Termination
-              </h2>
+              <SectionHeading>Termination</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 You can stop using Borkd at any time. We may suspend or
                 terminate access if you breach these Terms or if we need to
@@ -246,9 +223,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Changes to these Terms
-              </h2>
+              <SectionHeading>Changes to these Terms</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We may update these Terms from time to time. If we make
                 material changes, we will notify you via email or through
@@ -258,9 +233,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Governing law and disputes
-              </h2>
+              <SectionHeading>Governing law and disputes</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 These Terms are governed by the laws of New South Wales,
                 Australia. Any disputes will be resolved in the courts of New
@@ -269,9 +242,7 @@ export default function TermsPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Contact
-              </h2>
+              <SectionHeading>Contact</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 <a
                   href="mailto:info@borkd.app"

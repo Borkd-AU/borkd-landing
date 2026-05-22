@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { ReadingShell } from "@/components/landing/ReadingShell";
 import { RevealHeading } from "@/components/landing/RevealHeading";
+import { SectionHeading } from "@/components/landing/SectionHeading";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Borkd",
@@ -51,9 +52,7 @@ export default function PrivacyPage() {
             </p>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Who we are
-              </h2>
+              <SectionHeading>Who we are</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is an early-stage startup building a community-driven
                 map for dog owners. We are based in Sydney, Australia. You can
@@ -69,9 +68,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                What we collect
-              </h2>
+              <SectionHeading>What we collect</SectionHeading>
 
               <h3 className="text-xl tracking-tight text-content-primary sm:text-2xl">
                 Right now (waitlist phase)
@@ -121,9 +118,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                How we use your information
-              </h2>
+              <SectionHeading>How we use your information</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We use the information we collect to:
               </p>
@@ -149,9 +144,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Sharing
-              </h2>
+              <SectionHeading>Sharing</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We share information only with:
               </p>
@@ -178,9 +171,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Cookies and analytics
-              </h2>
+              <SectionHeading>Cookies and analytics</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We don&rsquo;t currently use non-essential cookies or
                 third-party analytics on this website. If that changes,
@@ -190,9 +181,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Your rights
-              </h2>
+              <SectionHeading>Your rights</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Depending on where you live, you may have the right to:
               </p>
@@ -222,9 +211,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Data retention
-              </h2>
+              <SectionHeading>Data retention</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We keep your information for as long as your relationship with
                 us is active, or as long as we need it for the purposes
@@ -234,9 +221,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Security
-              </h2>
+              <SectionHeading>Security</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We use reasonable technical and organisational measures to
                 protect your information. No system is perfectly secure, so we
@@ -245,9 +230,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Children
-              </h2>
+              <SectionHeading>Children</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Borkd is not directed at children under 16 and we do not
                 knowingly collect personal information from them. If you
@@ -257,9 +240,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Changes to this policy
-              </h2>
+              <SectionHeading>Changes to this policy</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 We may update this policy from time to time. If we make
                 material changes, we will notify you by email or through the
@@ -269,9 +250,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Governing law
-              </h2>
+              <SectionHeading>Governing law</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 This policy is governed by the laws of New South Wales,
                 Australia.
@@ -279,9 +258,7 @@ export default function PrivacyPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-2xl tracking-tight text-content-brand sm:text-3xl">
-                Contact
-              </h2>
+              <SectionHeading>Contact</SectionHeading>
               <p className="text-base leading-relaxed sm:text-lg">
                 Questions or requests:
                 <br />
