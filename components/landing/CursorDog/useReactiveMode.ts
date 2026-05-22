@@ -12,9 +12,9 @@ function resolveMode(): Mode {
   if (window.matchMedia('(pointer: fine)').matches) {
     return 'desktop'
   }
-  if (window.matchMedia('(pointer: coarse)').matches) {
-    return 'mobile'
-  }
+  // Mobile/touch (coarse pointer) and anything else: no cursor exists,
+  // so the cursor-following dog has no input to track. Disable rather
+  // than degrade — see the design discussion in the 2026-05-20 session.
   return 'disabled'
 }
 

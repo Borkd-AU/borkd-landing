@@ -10,6 +10,16 @@ import {
   SLACK_VELOCITY_GAIN_K,
   MAX_SLACK,
   WANDER_RADIUS,
+  WANDER_GATE_DELAY_MS,
+  WANDER_RAMP_MS,
+  QUICKTO_DURATION,
+  QUICKTO_EASE,
+  TURN_SQUASH_MS,
+  TURN_STRETCH_MS,
+  WALK_BOB_SPEED_THRESHOLD,
+  WALK_BOB_SPEED_CAP,
+  WALK_BOB_MAX_AMPLITUDE,
+  WALK_BOB_FREQUENCY_HZ,
   RAF_WAKE_THRESHOLD_MS,
   ENTRY_TROT_MS,
 } from './constants'
@@ -57,14 +67,19 @@ function readDogPos(dogEl: SVGGElement | null): CursorTarget {
 
 // Smooth pseudo-random wander offset, composed of two sinusoids per axis at
 // incommensurate frequencies so the dog ambles around the cursor instead of
-// converging on it. Returns the cursor position offset by up to WANDER_RADIUS.
-function wanderTarget(cursor: CursorTarget, now: number): CursorTarget {
+// converging on it. Amplitude is gated by `gain` (0..1): while the cursor is
+// moving the controller passes 0 so the dog tracks cleanly; the controller
+// ramps gain back toward 1 once the cursor stops, so wander reads as ambient
+// fidgeting only when there's nothing to follow.
+function wanderTarget(cursor: CursorTarget, now: number, gain: number): CursorTarget {
+  if (gain <= 0) return cursor
   const t = now / 1000 // seconds
   const oxNorm = (Math.cos(t * 0.51) + 0.6 * Math.cos(t * 1.13)) / 1.6
   const oyNorm = (Math.sin(t * 0.69) + 0.6 * Math.sin(t * 1.27)) / 1.6
+  const r = WANDER_RADIUS * gain
   return {
-    x: cursor.x + WANDER_RADIUS * oxNorm,
-    y: cursor.y + WANDER_RADIUS * oyNorm,
+    x: cursor.x + r * oxNorm,
+    y: cursor.y + r * oyNorm,
   }
 }
 
@@ -106,7 +121,13 @@ export default function CursorDog() {
     let slack = 0
     let prevTickState: DogState = 'DISABLED'
     let currentFacing: 1 | -1 = 1   // 1 = facing right, -1 = facing left
+    let turning = false             // gate during the 2-stage squash/stretch so we don't restack tweens mid-flip
     const FLIP_DEADZONE = 12        // px — hysteresis to prevent flip-flop when cursor is near dog.x
+    // Walking-bob amplitude smoothed across frames so it doesn't pop on/off
+    // when speed crosses the threshold. Lerps toward target each frame; the
+    // sniff timeline owns bob.y while SNIFFING so we leave it alone there.
+    let bobAmplitude = 0
+    let walkBobOwned = false        // true while we're driving bob.y, so we know to release it cleanly
     // Focusout debounce RAF handle — tracked so cleanup can cancel it.
     // Without this, the RAF can fire after teardown and call sm.transition
     // on a state machine whose refs are already null. (Codex round-2 finding.)
@@ -160,6 +181,17 @@ export default function CursorDog() {
       // Read rendered dog position for clamp + leash (Codex #10)
       const dogPos = readDogPos(dogRef.current)
 
+      // Wander gain — 0 while cursor is moving, ramps 0→1 over WANDER_RAMP_MS
+      // after the cursor has been still for WANDER_GATE_DELAY_MS. Drops back to
+      // 0 immediately on any new cursor motion (a slow fade-out would leave the
+      // dog wobbling for half a second after the user has clearly started
+      // moving again, which reads as "drunk dog").
+      const stillFor = now - tracker.lastMoveAtRef.current
+      const wanderGain =
+        stillFor <= WANDER_GATE_DELAY_MS
+          ? 0
+          : Math.min(1, (stillFor - WANDER_GATE_DELAY_MS) / WANDER_RAMP_MS)
+
       // The dog targets a wandering offset from the cursor (rather than the
       // cursor itself), so it ambles around the cursor instead of overlapping
       // it. During FOLLOWING/SNIFFING the wander applies; during BARKING the
@@ -169,33 +201,43 @@ export default function CursorDog() {
       const followTarget =
         currentState === 'BARKING'
           ? dogPos
-          : wanderTarget(tracker.targetRef.current, now)
+          : wanderTarget(tracker.targetRef.current, now, wanderGain)
 
       // Compute clamped target each frame (clamp keeps the dog within MAX_STRETCH
       // of the cursor — the wander offset is naturally capped by the clamp).
       const clamped = clampTarget(followTarget, dogPos, MAX_STRETCH)
 
-      // Direction flip — face the actual cursor (not the wander offset, which
-      // would flip-flop). Hysteresis prevents jitter when cursor is near dog.x.
+      // Direction flip — 2-stage squash/stretch so the dog reads as physically
+      // turning instead of mirror-flipping. Phase 1 squashes scaleX → 0 (edge-on);
+      // phase 2 stretches back to ±1 in the new direction. `turning` gates the
+      // tick so we don't restack tweens mid-flip if the cursor keeps crossing
+      // the deadzone. Hysteresis (deadzone) prevents flip-flop near dog.x.
       const cursorDx = tracker.targetRef.current.x - dogPos.x
       let desiredFacing: 1 | -1 = currentFacing
       if (Math.abs(cursorDx) > FLIP_DEADZONE) {
         desiredFacing = cursorDx < 0 ? -1 : 1
       }
-      if (desiredFacing !== currentFacing) {
+      if (desiredFacing !== currentFacing && !turning) {
         currentFacing = desiredFacing
         if (bobRef.current) {
-          gsap.to(bobRef.current, { scaleX: desiredFacing, duration: 0.2, ease: 'power2.out' })
+          turning = true
+          const el = bobRef.current
+          gsap.timeline({
+            onComplete: () => { turning = false },
+          })
+            .to(el, { scaleX: 0, duration: TURN_SQUASH_MS, ease: 'power2.in' })
+            .to(el, { scaleX: desiredFacing, duration: TURN_STRETCH_MS, ease: 'back.out(1.4)' })
         }
       }
 
       // Physics on RAF (single clock)
+      let speed = 0
       if (lastClampedTarget != null) {
         const dt = dtMs / 1000
         if (dt > 0) {
           const vx = (clamped.x - lastClampedTarget.x) / dt
           const vy = (clamped.y - lastClampedTarget.y) / dt
-          const speed = Math.hypot(vx, vy)
+          speed = Math.hypot(vx, vy)
           // Clamp slack to defend against cursor teleport (display sleep / automation
           // tools / dock unhide) which generates spike velocities the EMA can't decay
           // back fast enough — without this clamp the leash control-point Y could
@@ -207,6 +249,43 @@ export default function CursorDog() {
         }
       }
       lastClampedTarget = clamped
+
+      // Walking bob — speed-driven y oscillation on bobRef while FOLLOWING.
+      // Skipped during SNIFFING (sniff timeline owns bob.y), BARKING (dog is
+      // frozen mid-stride), and turn-arounds (don't fight the squash/stretch).
+      // Amplitude lerps toward target each frame to avoid pop-in when speed
+      // crosses the threshold. Releases bob.y back to 0 the frame after we
+      // last drove it, so handoff to sniff/baseline-reset is clean.
+      if (bobRef.current && currentState === 'FOLLOWING' && !turning) {
+        const speedNorm = Math.min(
+          1,
+          Math.max(0, (speed - WALK_BOB_SPEED_THRESHOLD) / (WALK_BOB_SPEED_CAP - WALK_BOB_SPEED_THRESHOLD)),
+        )
+        const targetAmp = speedNorm * WALK_BOB_MAX_AMPLITUDE
+        // ~10Hz lerp toward target — fast enough to feel reactive, slow enough
+        // not to pop. Frame-rate independent via dtMs.
+        const lerpK = 1 - Math.exp(-dtMs / 100)
+        bobAmplitude += (targetAmp - bobAmplitude) * lerpK
+        const phase = (now / 1000) * WALK_BOB_FREQUENCY_HZ * Math.PI * 2
+        gsap.set(bobRef.current, { y: Math.sin(phase) * bobAmplitude })
+        walkBobOwned = true
+      } else if (walkBobOwned) {
+        // Released — let other systems own bob.y. Damp toward 0 so the last
+        // frame we drove isn't a frozen offset, then hand off.
+        bobAmplitude *= Math.exp(-dtMs / 80)
+        if (bobAmplitude < 0.05) {
+          bobAmplitude = 0
+          if (bobRef.current && currentState !== 'SNIFFING') {
+            // SNIFFING has its own y-timeline; don't fight it. For any other
+            // state, zero out so we don't leave a stale offset behind.
+            gsap.set(bobRef.current, { y: 0 })
+          }
+          walkBobOwned = false
+        } else if (bobRef.current && currentState !== 'SNIFFING') {
+          const phase = (now / 1000) * WALK_BOB_FREQUENCY_HZ * Math.PI * 2
+          gsap.set(bobRef.current, { y: Math.sin(phase) * bobAmplitude })
+        }
+      }
 
       if (
         quickToX &&
@@ -261,9 +340,11 @@ export default function CursorDog() {
 
     const ctx = gsap.context(() => {
       // Construct quickTo INSIDE the context so the tweens are reverted on cleanup.
+      // Tuning lives in constants — power2.out / 0.55s instead of power3 / 0.4s
+      // so the dog glides to a stop instead of snapping (cursor-stop felt sharp).
       safeSet(dogRef, (el) => {
-        quickToX = gsap.quickTo(el, 'x', { duration: 0.4, ease: 'power3' })
-        quickToY = gsap.quickTo(el, 'y', { duration: 0.4, ease: 'power3' })
+        quickToX = gsap.quickTo(el, 'x', { duration: QUICKTO_DURATION, ease: QUICKTO_EASE })
+        quickToY = gsap.quickTo(el, 'y', { duration: QUICKTO_DURATION, ease: QUICKTO_EASE })
       })
       // Reset the bob group's flip + bob offsets at mount. Important because
       // the flip tween (gsap.to scaleX from the tick) is NOT captured by ctx
