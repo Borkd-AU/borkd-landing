@@ -2,6 +2,8 @@
 
 import type { Metadata } from "next";
 import { SiteFooter } from "@/components/landing/SiteFooter";
+import { ReadingShell } from "@/components/landing/ReadingShell";
+import { RevealHeading } from "@/components/landing/RevealHeading";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Borkd",
@@ -12,16 +14,17 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
-      <main className="bg-background-primary text-content-primary">
-        <div className="mx-auto w-full max-w-[820px] px-6 pb-16 pt-32 sm:px-8 sm:pt-40 lg:pb-24">
-          <article className="space-y-10">
-            <header className="space-y-3">
-              <h1
-                className="leading-tight tracking-tight text-content-brand text-[clamp(32px,5vw,48px)]"
-                style={{ fontVariationSettings: "'opsz' 14" }}
-              >
-                Terms of Service
-              </h1>
+      <ReadingShell>
+        <main className="bg-background-primary text-content-primary">
+          <div className="mx-auto w-full max-w-[820px] px-6 pb-16 pt-32 sm:px-8 sm:pt-40 lg:pb-24">
+            <article className="space-y-10">
+              <header className="space-y-3">
+                <RevealHeading
+                  as="h1"
+                  className="leading-tight tracking-tight text-content-brand text-[clamp(32px,5vw,48px)]"
+                >
+                  Terms of Service
+                </RevealHeading>
               <p className="text-sm text-content-secondary">
                 <strong className="font-medium">Effective date:</strong> 10 May 2026
               </p>
@@ -280,9 +283,10 @@ export default function TermsPage() {
                 Borkd, Sydney, Australia
               </p>
             </section>
-          </article>
-        </div>
-      </main>
+            </article>
+          </div>
+        </main>
+      </ReadingShell>
       <SiteFooter />
     </>
   );
