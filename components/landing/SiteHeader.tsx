@@ -32,7 +32,7 @@ const navItems: Array<{ label: string; href: string; external?: boolean }> = [
   { label: "home", href: "/" },
   { label: "about", href: "/about" },
   { label: "for venues", href: "/for-venues" },
-  { label: "contact", href: "mailto:info@borkd.app", external: true },
+  { label: "contact", href: "/contact" },
 ];
 
 export function SiteHeader() {
@@ -214,9 +214,9 @@ export function SiteHeaderAlt() {
 
 function Logo() {
   return (
-    <a
-      href="#top"
-      aria-label="Borkd"
+    <Link
+      href="/"
+      aria-label="Borkd — home"
       className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-full bg-background-accent shadow-md transition-opacity hover:opacity-90 sm:h-[57px] sm:w-[57px]"
     >
       <Image
@@ -226,7 +226,7 @@ function Logo() {
         height={26}
         className="h-[20px] w-[23px] sm:h-[26px] sm:w-[30px]"
       />
-    </a>
+    </Link>
   );
 }
 
