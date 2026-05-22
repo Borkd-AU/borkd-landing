@@ -1,208 +1,107 @@
-# Checkpoint — 2026-05-20 (late)
-_Mode: full | Skill version: 1.0_
+# Checkpoint — 2026-05-22
 
-## Done this session
+_Mode: quick. Full checkpoint flow skipped because the entire session's
+work was already committed, pushed, and Vercel-deployed before the
+clear request — there was no in-flight state to capture beyond what
+`git log` already records._
 
-- **Cursor-dog feature shipped to `main`** via PR #1 (merge commit
-  `6c629c5`, two-parent merge — `5bf714a` and `38b26c5`). The PR
-  branch (`hobobranch`) carried 26 commits between `5bf714a..38b26c5`.
-  Closes the "shout-lines SVG asset" blocker the prior session's
-  checkpoint left open + everything that flowed from it.
-  - Asset: `public/images/illustration/vector6-shout.svg` (4 stroke
-    lines, brand-violet, focal centroid `29.7 7.4`) — commit `630efdb`.
-  - Spec round-6 (svgOrigin pin, shoutRef-as-sibling) + round-7
-    (bobRef separation) amendments — `630efdb`, `8c9c209`.
-  - Implementation plan
-    (`docs/superpowers/plans/2026-05-20-cursor-dog.md`, 1633 lines,
-    11 tasks) — `8c9c209`.
-  - **17 implementation/fix/polish commits `234ea1b → 38b26c5`**:
-    - 10 core-impl commits `234ea1b → 83d8382`: constants/types,
-      `useReactiveMode`, `useCursorTracker`, pure `stateMachine.ts` +
-      unit test, `useDogStateMachine.ts` runtime layer, mobile +
-      desktop SVGs, controller `index.tsx`, `CursorDogMount.tsx`
-      client wrapper, `app/layout.tsx` + `app/globals.css` wiring.
-    - 2 mid-impl fixes from review: `dc9df7c` (entry-trot
-      `gsap.context()` registration), `45a1850` (lint).
-    - 2 smoke-test fixes: `e9ed6bb` (leash slack physics —
-      `SLACK_VELOCITY_GAIN_K` 0.01 → 0.00005 + `MAX_SLACK=1.5`
-      clamp), `dc439a4` (explicitly kill bark/sniff timeline refs
-      before `ctx.revert()` — sniff `repeat: -1` was leaking
-      detached SVG nodes, caught by codex final-pass review).
-    - 3 user-driven polish commits: `d8e78a5` (brand violet stroke
-      `var(--content-accent, #3A39FF)`, 2× size `scale(1.2)`,
-      `WANDER_RADIUS=80` ambient offset), `3837053` (bark cadence
-      8–20s vs prior 20–40s, `BARK_SHOUT_PEAK_SCALE=1.8`, dropped
-      park opacity fade), `38b26c5` (direction flip with 12px
-      hysteresis dead zone, click-to-bark suppressed in
-      `PAUSED_INPUT`, bark-freeze, dev-mode console hello).
+## Where we are
 
-- **Codex review cycles on the feature** (all clean now):
-  - Asset codex review (1) — geometry passes; spec defects surfaced
-    became round-6.
-  - Plan codex reviews (3) — round-1 BLOCK on aborted-controller;
-    round-2 REVISE on baseline-snap + module loading; round-3
-    SHIP-WITH-FIXES, fixes applied inline.
-  - Final code-stage codex review — BLOCK on state-machine timeline
-    leak (fixed in `dc439a4`).
-  - Ship-gate codex review on the user-driven polish — verdict SHIP,
-    no changes required.
-  - Checkpoint review (this file) — round-1 REVISE on 6 factual
-    errors, all corrected before write.
+- **Branch:** `main` synced with `origin/main` (0 ahead, 0 behind)
+- **HEAD:** `59e5f1d`
+- **Working tree:** clean (only `.bkit/` untracked, pre-existing)
+- **Vercel production:** `dpl_5j1Uo2ThKgWL6P4kDx38vAJjT5LE` — ● Ready,
+  alias https://borkd.app
 
-## Received via main merge (not this session's work)
+## Shipped this session (newest → oldest)
 
-`main` advanced while `hobobranch` was open. The following mobile
-Steps polish commits are on `main` post-merge but are NOT cursor-dog
-work — they were authored elsewhere and arrived via the merge
-parent-1 (`5bf714a`) chain:
+```
+59e5f1d fix(landing): SSR hide pattern for reveals + misc bundle/hydration
+7d70424 perf(landing): tighten hot paths + plug GSAP cleanup leaks
+306ea47 fix(legal): SSR h2 ids on /privacy and /terms via SectionHeading
+eed5c87 refactor(lib): split gsap barrel + extract slugify and SectionHeading
+5cc6d3a feat(landing): smooth scroll on every page, TOC reads through smoother
+340c723 fix(contact): match SVG aspect ratio so girl-2 isn't squashed
+f31627f fix(landing): footer social icons split into separate rows on mobile
+018e497 fix(landing): TOC works correctly under ScrollSmoother + adds mobile pill
+bbc124d feat(landing): /contact page + floating TOC on legal pages
+f3cc9ff feat(landing): editorial motion on /about and /for-venues
+ea79b89 docs(design): mandate the control center via DESIGN-RULES.md
+6ff6561 feat(cursor-dog): natural motion + disable on touch devices
+```
 
-- `5bf714a fix(landing): delay mobile Steps pin so the card slider is visible`
-- `8698970 fix(landing): mobile Steps — lead with the hero image, headline below`
-- `17e4b13 fix(landing): mobile Steps composite — match QuoteSection card size`
-- `3cec7e0 fix(landing): contain Steps GSAP track + show hero composite on mobile`
+## What landed
 
-Worth knowing because if mobile Steps behavior surprises a future
-session, the commits are real but not part of this session's intent.
+- **CursorDog** natural motion (turn-around squash/stretch, wander
+  gating on cursor stillness, speed-driven walking bob, softer
+  `quickTo`). Disabled entirely on `pointer: coarse`.
+- **Design rules** (`docs/DESIGN-RULES.md` + AGENTS.md header):
+  `/design-system` page is the single source of truth. 8 hard rules
+  + token inventory + PR checklist. Mandatory pre-read for any UI work.
+- **Subpages** with editorial scroll-reveal motion (`/about`,
+  `/for-venues`). `/contact` rebuilt with big-link list pattern +
+  tilt-spotlight cards; intentional 2-line hero ("Drop us / a line.").
+- **Long-form legal pages** (`/privacy`, `/terms`): server-rendered
+  `<SectionHeading>` puts stable slug ids on all 27 h2s so hash links
+  and no-JS visitors land correctly. Floating TOC: desktop sticky
+  left rail + mobile frosted-glass pill. Fades when footer enters
+  the lower 30% of the viewport.
+- **SmoothScroll** runs on every route. `ReadingShell` reads element
+  positions through a `viewportTop()` helper that switches between
+  `smoother.offset() - smoother.scrollTop()` and native rect — caches
+  offsets at mount/resize/safety-tick so per-tick reads are cheap.
+- **React/perf optimization round** — Codex 3-stage cross-validation,
+  Stage 2 score 28/50 → Stage 3 final 45/50 APPROVED:
+  - GSAP barrel split into 4 entrypoints (`lib/gsap.ts` core,
+    `lib/gsap-scroll.ts`, `lib/gsap-split.ts`, `lib/gsap-react.ts`)
+    so components only pull the plugins they need
+  - TiltSpotlightCard rect caching (no per-pointermove layout read)
+  - RevealHeading char tween retained for cleanup + SplitText
+    try/catch failsafe + fonts.ready cancellation guard
+  - CursorDog turn timeline captured by `ctx.add()`; trot tween
+    explicitly killed via `killTrotTween()` in cleanup
+  - BigLinkRow → server component (no client hooks needed)
+  - `next/image priority` → `preload` across SiteHeader and contact
+    (Next 16 deprecation)
+  - `[data-reveal]` SSR opacity:0 via globals.css, not useEffect
+  - SiteHeader SVG manual ReactDOM.preload kept; Image `preload`
+    prop removed (Next 16's Image preload does not emit
+    `<link rel="preload">` for SVGs)
 
-## In progress
+## Known limitations (intentionally deferred)
 
-- _Nothing in progress._ Working tree shows only the two pre-existing
-  prior-session diffs (`AGENTS.md` 63 changed lines = 42 ins + 21 del;
-  `CHECKPOINT.md` overwritten by this file). Both will be committed
-  immediately after this checkpoint is written.
+- `ReadingShell.tsx` still mixes React state with direct DOM class
+  mutation on the TOC anchors. Pragmatic — defends against the
+  StrictMode / portal / stale-closure issues we debugged for
+  several rounds. Codex did not flag it as a regression.
 
-## Next
+## Cold-read pointers for the next session
 
-1. **Production deploy to live URL.** PR merged to `main` at
-   `6c629c5`; Vercel will auto-deploy on the next prod workflow
-   trigger. Verify on `https://www.borkd.app`:
-   - Production deployment is for commit `6c629c5` or newer
-     (check the Vercel dashboard's production deployment hash).
-   - **Desktop** (pointer:fine, reduce-motion off): violet
-     line-art cursor dog appears ~50ms after mount; ambles around
-     the cursor (not overlapping); leash visibly tracks the dog;
-     direction flips when cursor crosses dog horizontally;
-     click anywhere fires a bark; bark freezes the wander
-     mid-stride; dog trots offscreen on cursor-leave at full
-     opacity (no fade); returns at full opacity.
-   - **Mobile** (DevTools device mode or actual phone): static
-     dog in bottom-right corner (24px inset); no leash; bark
-     fires every 8–20s.
-   - **Reduce-motion ON** (System Prefs → Accessibility): dog
-     vanishes within 1s; `window.__borkdDog === undefined`; no
-     console warnings.
-   - **Print preview** (Cmd+P): cursor dog hidden (`@media print`
-     rule in `app/globals.css`).
-   - **DevTools console**: no `console.error`; in dev mode the
-     hello message `🐕 borkd — try window.__borkdDog.triggerBark()`
-     appears (suppressed in prod build).
+- **Design system** = `app/design-system/page.tsx` (control center) +
+  `docs/DESIGN-RULES.md` (the rules). Always read both before any
+  UI edit. Tokens only — no hex/rgba/hsl in components.
+- **Long-form legal page headings** use `<SectionHeading>` from
+  `components/landing/SectionHeading.tsx` so the id is in the SSR
+  HTML, not assigned by `ReadingShell` at runtime.
+- **GSAP imports** — core from `@/lib/gsap`; plugins from
+  `@/lib/gsap-scroll` (ScrollTrigger/ScrollSmoother/ScrollToPlugin),
+  `@/lib/gsap-split` (SplitText), `@/lib/gsap-react` (useGSAP).
+- **TOC behaviour** lives in `components/landing/ReadingShell.tsx`.
+  Three signal sources drive `syncToc`: scroll listener, IO on
+  each heading, and a 500ms safety setInterval. Each schedules via
+  a 16ms setTimeout throttle (rAF stalls when the tab is
+  backgrounded, so we don't use it). Offsets re-measured on resize
+  and every 2s via the safety tick.
 
-## Blockers / open questions
-
-- _None._ Codex's ship-gate verdict was clean.
-
-## Abandoned / dead ends
-
-- **`SLACK_VELOCITY_GAIN_K = 0.01` (the plan-draft default).** Spec
-  flagged this as in-impl tuning; smoke-test confirmed it produced
-  leash control-point Y values of ~3600px (off-screen) on cursor
-  teleport. Settled at `0.00005`. Don't raise without re-running the
-  teleport test (claude-in-chrome's hover action is one trigger).
-- **Park fade to opacity 0.4.** Originally spec'd; manifested only
-  as "dog comes back lighter" on cursor return (dog is offscreen
-  during PARKED anyway, so the fade itself was never visible).
-  Removed in `3837053`. Don't re-add unless you also restore
-  opacity on `PARKED → IDLE` transition (add a `gsap.set(dogRef,
-  {opacity: 1})` side effect on that edge).
-- **Per-task two-stage codex reviews for the mechanical
-  SVG/scaffold tasks (1, 2, 6, 7, 9, 10).** Batched into combined
-  spec-compliance+code-quality reviews instead of the strict
-  two-stage pattern the subagent-driven-development skill
-  prescribes. Defensible for mechanical copy-paste tasks, but
-  worth flagging that this session deviated from the skill's
-  prescribed flow.
-
-## Decisions
-
-- **Merge strategy: regular merge commit, not squash.** Verified:
-  `6c629c5` has two parents (`5bf714a`, `38b26c5`). Preserves the
-  26-commit history (each with its codex-review trail in the commit
-  message). Trade-off: noisier main log but auditability for next
-  time we revisit this feature.
-- **`gh` active account: switched from `Anocs1` to `hobopark`
-  mid-session.** Required for `Borkd-AU/borkd-landing` PR creation
-  (Anocs1 lacks collaborator access; got "must be a collaborator"
-  error). Switch is sticky across the host's gh sessions until
-  manually reverted with `gh auth switch -u Anocs1`.
-- **Code-stage codex review is non-redundant with plan-stage codex
-  review.** The plan went through 3 codex rounds and was approved
-  SHIP-WITH-FIXES, but the final code-stage review still caught a
-  CRITICAL leak (state-machine timeline refs not in `ctx`). For
-  any future feature with similar GSAP-context complexity, plan
-  on a final code-stage codex pass regardless of plan-stage
-  outcome.
-
-## Runtime state
-
-- **Branch:** `main` (synced with `origin/main`; 0 ahead, 0 behind).
-- **`hobobranch`:** deleted on remote (`gh pr merge --delete-branch`)
-  AND local (cleaned up after merge).
-- **Dev server:** none running (smoke-tested + killed).
-- **Migrations:** none touched (no schema changes this session).
-- **Env vars:** none added/changed this session. Resend
-  (`RESEND_API_KEY`) was set in the prior session. Supabase
-  (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) came in via merge
-  of `origin/main` (commit `80d7c57` "feat(waitlist): Supabase is
-  source of truth") early in this session.
-- **Git remote:** `git@github.com:Borkd-AU/borkd-landing.git` (SSH;
-  authenticates as `hobopark`).
-- **`gh` active account:** `hobopark` (was `Anocs1` at session
-  start). Verify with `gh auth status` before any Borkd-AU
-  operation in a future session.
-
-## Mental model notes
-
-- **gh CLI two-account trap.** This machine has both `Anocs1`
-  (personal) and `hobopark` logged in via the gh keyring. At
-  session start `Anocs1` was active. ANY `gh pr create` /
-  `gh pr merge` / `gh api repos/Borkd-AU/*` against the Borkd
-  org will fail with "must be a collaborator" until you switch.
-  The switch is sticky across sessions. For a future session,
-  first `gh auth status`; if active is `Anocs1`, run
-  `gh auth switch -u hobopark` before any Borkd ops; restore
-  with `gh auth switch -u Anocs1` after.
-- **Plan-stage codex review is not a substitute for code-stage
-  review.** The spec went through 11 codex invocations across 7
-  rounds; the plan through 3 codex rounds; both delivered
-  "READY TO SHIP" verdicts. The final code-stage review still
-  caught the state-machine timeline leak (sniff `repeat: -1`
-  running on detached DOM after `ctx.revert()`) — a defect
-  neither the spec nor the plan made detectable on paper. For
-  GSAP-heavy features in particular, always fire one codex pass
-  on the implemented code before merge.
-- **"In-impl tuning" constants in specs are real risks, not just
-  hand-waves.** The spec marked `SLACK_VELOCITY_GAIN_K = 0.01` as
-  "tune visually". That phrase smuggled in a 200×-too-high value
-  that broke on cursor teleport in the first smoke test. Treat
-  any "tune visually" constant in a spec as a follow-up TODO
-  bearing real risk, not as a defensible default.
-
----
-
-## Resume prompt
+## Resume prompt for next session
 
 Paste into a fresh Claude Code session:
 
 > Please read AGENTS.md FIRST and invoke the two session-start skills
 > listed there (`andrej-karpathy-skills:karpathy-guidelines` and
-> `codex-cowork`) BEFORE anything else. Then read CHECKPOINT.md and
-> any other relevant `.md` files to get up to speed. Give me a brief
-> summary of where we left off and what's next. Specifically, pick
-> up from: **Production deploy to live URL. PR #1 merged to `main`
-> at `6c629c5`; Vercel will auto-deploy on the next prod workflow
-> trigger. Verify on `https://www.borkd.app` that the production
-> deployment hash is `6c629c5` or newer and that the cursor dog
-> renders correctly per the checklist in CHECKPOINT.md's "Next"
-> section (desktop wander/leash/flip/click-bark/freeze/no-fade;
-> mobile static corner; reduce-motion teardown; print hides;
-> clean console).**
+> `codex-cowork`) BEFORE anything else. Then read this CHECKPOINT.md
+> and `docs/DESIGN-RULES.md` to get up to speed. Working tree should
+> be clean and synced with `origin/main`; production is live at
+> https://borkd.app. No in-flight work to resume — start fresh from
+> whatever the user asks next.
+</content>
