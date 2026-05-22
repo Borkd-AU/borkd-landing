@@ -4,6 +4,33 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## Design — MANDATORY before any UI work
+
+**Single source of truth: `app/design-system/page.tsx`** (the control center).
+**Rule book: `docs/DESIGN-RULES.md`** (must read before touching any UI).
+
+The control center is a 1:1 mirror of the Figma design system. It defines
+every color, spacing step, radius, shadow, and font choice that exists on
+this site. If something is not in the control center, it does not exist —
+do not invent hex codes, off-scale spacing, or new fonts.
+
+Before any UI edit:
+
+1. Read `docs/DESIGN-RULES.md` end-to-end.
+2. Read `app/design-system/page.tsx` so you know what tokens are available.
+3. Use only semantic tokens (`bg-background-brand`, `text-content-brand`,
+   `border-border-muted`, etc.) — never hex/rgba/hsl in component code.
+4. For alpha, use Tailwind's `/40` modifier or `color-mix(in srgb,
+   var(--color-X) N%, transparent)`. Never `rgba(R,G,B,N)`.
+5. For spacing, use Tailwind defaults (which align 1:1 with the Borkd
+   `--size-*` scale) or `[padding:var(--size-md)]` for named tokens.
+6. If you genuinely need a new token, add it to `styles/tokens/*.css` +
+   `app/globals.css` + render it in `/design-system` first. Then use it.
+
+Failure to follow this leaves "AI tells" all over the codebase
+(hardcoded brand-color rgba, off-scale paddings, inconsistent radii)
+and breaks the promise that a Figma edit propagates to the site.
+
 ## Session start (Claude)
 
 ALWAYS invoke these two skills at the start of every session, before any
