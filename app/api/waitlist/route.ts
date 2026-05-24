@@ -267,16 +267,29 @@ export async function POST(request: Request) {
 }
 
 /**
- * Push the email into Resend's modern Contacts endpoint. Best-effort:
- * never throws to the caller in a way that should fail the signup —
- * the caller already persisted the source-of-truth row. Errors are
- * logged here; the caller's .catch is a final safety net.
+ * Push the email into the Resend audience scoped to RESEND_AUDIENCE_ID.
+ * Best-effort: never throws to the caller in a way that should fail the
+ * signup — the caller already persisted the source-of-truth row. Errors
+ * are logged here; the caller's .catch is a final safety net.
+ *
+ * Endpoint distinction: `POST /contacts` creates an org-level contact
+ * that is NOT visible in any audience (so broadcasts can't target it).
+ * `POST /audiences/{id}/contacts` is the only path that adds a contact
+ * to the audience the launch broadcast will use.
  */
 async function mirrorToResend(email: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn(
       "[waitlist] RESEND_API_KEY not set — skipping Resend mirror (signup recorded in Supabase)."
+    );
+    return;
+  }
+
+  const audienceId = process.env.RESEND_AUDIENCE_ID;
+  if (!audienceId) {
+    console.warn(
+      "[waitlist] RESEND_AUDIENCE_ID not set — skipping Resend mirror (signup recorded in Supabase). Set this to the audience that launch broadcasts will target."
     );
     return;
   }
@@ -292,15 +305,18 @@ async function mirrorToResend(email: string): Promise<void> {
   const timer = setTimeout(() => abort.abort(), 10_000);
 
   try {
-    const resendResponse = await fetch("https://api.resend.com/contacts", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(upstreamBody),
-      signal: abort.signal,
-    });
+    const resendResponse = await fetch(
+      `https://api.resend.com/audiences/${audienceId}/contacts`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(upstreamBody),
+        signal: abort.signal,
+      }
+    );
 
     if (resendResponse.ok) return;
 
