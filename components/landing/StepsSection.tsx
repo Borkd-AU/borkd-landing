@@ -108,18 +108,54 @@ export function StepsSection() {
         // minus a viewport-relative offset so the headline above the
         // slider stays in view when pin starts (slider lands ~45% down
         // the viewport, not at the very top).
+        //
+        // Floor (mobile only): the hero card must have fully scrolled
+        // past the viewport top before pin engages. Previously we only
+        // accounted for headline room; the tall hero card above the
+        // headline ended up frozen partially in-frame during pin (user
+        // reported the bottom of the hero image clipped at viewport
+        // bottom). Reading the hero's own bottom edge ties the pin
+        // start to the actual visual flow, so shrinking or resizing
+        // the hero doesn't reintroduce the trap.
         const startDelta = () => {
           if (startOffsetEl === section) return 0;
           const sectionRect = section.getBoundingClientRect();
           const startRect = startOffsetEl.getBoundingClientRect();
           const raw = Math.round(startRect.top - sectionRect.top);
-          // Bring the slider down so headline + slider both sit in
-          // view. 45% of the viewport feels like the right resting
-          // point on common phones (slider ~170px tall, headline ~90,
-          // 24px gap — total ~284 fits comfortably in the upper half).
           const headlineRoom = Math.round(window.innerHeight * 0.45);
-          return Math.max(0, raw - headlineRoom);
+          const sliderBased = Math.max(0, raw - headlineRoom);
+
+          const heroEl = section.querySelector<HTMLElement>(
+            "[data-hero-mobile]"
+          );
+          if (!heroEl) return sliderBased;
+          const heroRect = heroEl.getBoundingClientRect();
+          // heroBottom relative to section top — at this scroll
+          // distance the hero card's bottom edge is at viewport top.
+          const heroBottom = Math.round(
+            heroRect.bottom - sectionRect.top
+          );
+          return Math.max(sliderBased, heroBottom);
         };
+
+        // Snap: tighter on mobile so it doesn't fight ScrollSmoother's
+        // touch catch-up (smoothTouch 0.1) after a fling. Desktop keeps
+        // the original feel — it never had the momentum-vs-snap fight
+        // because desktop scroll is wheel-driven and the previous
+        // 0.2–0.5s/0.05s delay timing already felt right there.
+        const snap = withHero
+          ? {
+              snapTo: "labelsDirectional" as const,
+              duration: { min: 0.2, max: 0.5 },
+              delay: 0.05,
+              ease: "power2.inOut",
+            }
+          : {
+              snapTo: "labelsDirectional" as const,
+              duration: { min: 0.1, max: 0.25 },
+              delay: 0,
+              ease: "power2.inOut",
+            };
 
         const tl = gsap.timeline({
           scrollTrigger: {
@@ -130,12 +166,7 @@ export function StepsSection() {
             scrub: 0.1,
             anticipatePin: 1,
             invalidateOnRefresh: true,
-            snap: {
-              snapTo: "labelsDirectional",
-              duration: { min: 0.2, max: 0.5 },
-              delay: 0.05,
-              ease: "power2.inOut",
-            },
+            snap,
           },
         });
 
@@ -192,13 +223,15 @@ export function StepsSection() {
         tl.to({}, { duration: 0.3 });
 
         // Subtle parallax on the hero composite for the entire pinned
-        // duration — yPercent drifts ~6% around the -50 baseline so
-        // it never looks frozen while the cards are panning.
+        // duration — yPercent drifts ±1% around the -50 baseline so it
+        // never looks frozen while the cards are panning. Previously
+        // ±3%, but on short viewports (1366×768 laptops) that drift
+        // pushed the card bottom past the pinned viewport edge.
         if (hero) {
           tl.fromTo(
             hero,
-            { yPercent: -53 },
-            { yPercent: -47, ease: "none", duration: 2.5 },
+            { yPercent: -51 },
+            { yPercent: -49, ease: "none", duration: 2.5 },
             0
           );
         }
@@ -268,6 +301,7 @@ export function StepsSection() {
             (empty) alt and there's no information lost to AT. */}
         <div
           aria-hidden
+          data-hero-mobile
           className="
             relative mx-auto aspect-[516/833] w-full max-w-[420px]
             shrink-0 overflow-hidden rounded-2xl bg-cloud-300
@@ -337,10 +371,21 @@ export function StepsSection() {
             the screen is too narrow to fit two 460px columns + 235px
             paddings, so the hero scales down with viewport width and
             tops out at 460px on wider screens. Aspect 516/833 matches
-            the QuoteSection café image. */}
+            the QuoteSection café image.
+
+            Width is capped by a 80svh height budget converted into a
+            width via the 516/833 aspect ratio: 80svh × (516/833) ≈
+            49.5svh. min() picks the smaller of viewport-width-based
+            clamp() and the height-budget cap, so on short viewports
+            (e.g. 1366×768 laptops) the card shrinks proportionally
+            instead of overflowing the stage and clipping below the
+            viewport during pin. Using max-h alone would clamp height
+            with width fixed, breaking the portrait aspect. */}
         {/* Hero: vertically centred via `top-1/2` + GSAP `yPercent: -50`
             baseline (set inside useGSAP), then the timeline layers a
-            slide-in (xPercent) plus a ±3% parallax (yPercent) on top.
+            slide-in (xPercent) plus a ±1% parallax (yPercent) on top.
+            Parallax was ±3% but on short viewports that 3% drift was
+            enough to push the card edge past the pinned viewport.
             We don't use Tailwind's `-translate-y-1/2` here because
             GSAP rewrites the transform property and would clobber it
             on the first tween tick. */}
@@ -349,7 +394,7 @@ export function StepsSection() {
           aria-hidden
           className="
             pointer-events-none absolute right-12 top-1/2
-            hidden aspect-[516/833] w-[clamp(280px,30vw,460px)]
+            hidden aspect-[516/833] w-[min(clamp(280px,30vw,460px),49.5svh)]
             overflow-hidden rounded-2xl bg-cloud-300
             lg:right-[clamp(48px,16vw,235px)] lg:block
           "
