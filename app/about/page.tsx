@@ -39,8 +39,9 @@ export default function AboutPage() {
               <p data-reveal className="text-lg leading-relaxed sm:text-xl">
                 If you&rsquo;ve ever stood outside a cafe wondering whether{" "}
                 <em className="font-display italic">&ldquo;dog-friendly&rdquo;</em>{" "}
-                actually means your dog is welcome, or driven half an hour to a
-                beach only to find a no-dogs sign at the gate, this is for you.
+                actually means your dog is welcome, or driven half an hour to a{" "}
+                <span className="borkd-emoji-word" data-emoji="🏖️">beach</span>{" "}
+                only to find a no-dogs sign at the gate, this is for you.
               </p>
               <p data-reveal className="text-lg leading-relaxed sm:text-xl">
                 Borkd is the map we wish existed — built by pup parents, for pup
@@ -57,7 +58,7 @@ export default function AboutPage() {
                 <p data-reveal className="text-base leading-relaxed sm:text-lg">
                   Sydney has plenty of places that are technically dog-friendly.
                   Finding the ones that{" "}
-                  <em className="font-display italic">genuinely</em> are means
+                  <em className="borkd-emoji-word font-display italic" data-emoji="✨">genuinely</em> are means
                   bouncing between Google Maps, TikTok, Facebook groups, and a
                   couple of friends who happen to own the same breed as you.
                   Photos are old. Reviews don&rsquo;t mention dogs. Half the
@@ -181,7 +182,7 @@ export default function AboutPage() {
                 data-reveal
                 className="pt-4 text-center text-2xl text-content-brand sm:text-3xl"
               >
-                <em className="font-display italic">Good places, found.</em>
+                <em className="borkd-emoji-word font-display italic" data-emoji="📍">Good places, found.</em>
               </p>
             </article>
           </RevealScope>

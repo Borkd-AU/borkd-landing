@@ -31,7 +31,7 @@ export default function ContactPage() {
                   data-reveal
                   className="font-display text-sm uppercase tracking-widest text-content-accent/80"
                 >
-                  Say hi
+                  <span className="borkd-emoji-word" data-emoji="👋">Say hi</span>
                 </p>
                 {/* Intentional 2-line break: "Drop us" / "a line." reads
                     as deliberate display typography. Letting clamp+wrap
@@ -42,7 +42,14 @@ export default function ContactPage() {
                   as="h1"
                   className="leading-[1.02] tracking-tight text-content-brand text-[clamp(40px,8vw,88px)]"
                 >
-                  Drop us<br />a line.
+                  {/* Trailing space before <br /> is invisible (collapses at
+                      line end) but keeps SplitText's aria-label readable:
+                      textContent becomes "Drop us a line." not "Drop usa line."
+                      GSAP SplitText derives aria-label from textContent, and a
+                      <br /> contributes no character. */}
+                  Drop us{" "}
+                  <br />
+                  <span className="borkd-emoji-word" data-emoji="✉️">a line.</span>
                 </RevealHeading>
                 <p
                   data-reveal
@@ -142,7 +149,7 @@ export default function ContactPage() {
                 className="tracking-tight text-content-brand text-[clamp(32px,5vw,48px)]"
                 style={{ fontVariationSettings: "'opsz' 14" }}
               >
-                <em className="font-display italic">Sydney</em>, AU
+                <em className="borkd-emoji-word font-display italic" data-emoji="🦘">Sydney</em>, AU
               </p>
               <p className="max-w-md text-sm leading-relaxed text-content-primary/70 sm:text-base">
                 No office to drop in to yet &mdash; mail us at the addresses

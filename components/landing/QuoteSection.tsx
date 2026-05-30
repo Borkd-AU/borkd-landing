@@ -41,7 +41,7 @@ export function QuoteSection() {
             <em className="font-display italic">
               &ldquo;Dog-friendly&rdquo;
             </em>{" "}
-            shouldn&rsquo;t be a gamble.
+            shouldn&rsquo;t be <span className="borkd-emoji-word" data-emoji="🎲">a gamble</span>.
           </p>
           <p
             className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"
@@ -75,8 +75,11 @@ export function QuoteSection() {
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             Water, shade, indoor seating, how staff treat you when you
-            walk in. And the pubs where your dog has more friends than
-            you do.
+            walk in. And the pubs where your dog has{" "}
+            <span className="borkd-emoji-word" data-emoji="🐕">
+              more friends than you do
+            </span>
+            .
           </p>
           <p
             className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"

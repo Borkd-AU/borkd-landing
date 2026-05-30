@@ -293,6 +293,52 @@ i {
   font-style: italic;
 }
 
+/* Emoji-morph: while hovering a [data-emoji] element the CursorDog hides the
+   native cursor and shows a large emoji in its place. The class is toggled on
+   <body> by the controller and force-cleared on teardown, so the cursor can
+   never get stuck hidden. `!important` + the universal child selector ensure it
+   wins over element-level `cursor` rules (links, buttons) underneath. */
+body.borkd-cursor-hidden,
+body.borkd-cursor-hidden * {
+  cursor: none !important;
+}
+
+/* Emoji-morph word treatment. While a [data-emoji] word is hovered, the
+   controller adds .borkd-emoji-active so the WORD itself reacts (not just the
+   emoji popping in) — like the designbysteph reference. The reaction is an
+   instant swap to the display face (Instrument Serif italic); no transform,
+   transition, or scale (see the .borkd-emoji-active note below for why those
+   were removed). No motion means nothing to gate for reduced-motion.
+
+   NOTE: selectors are CLASS-based, not attribute-based. Tailwind v4 / Lightning
+   CSS strips plain `[data-emoji]` attribute-selector rules from globals.css at
+   compile time, so the markup class `.borkd-emoji-word` carries the base style
+   and `.borkd-emoji-active` (toggled by the controller) carries the swap. */
+.borkd-emoji-word {
+  /* inline-block is set HERE (always), not only on .active, so the inline
+     formatting context never CHANGES on hover — otherwise a multi-word span
+     ("your pup") could pop to a new line when it becomes atomic mid-hover
+     (Codex final-review LOW). */
+  display: inline-block;
+}
+/* Compound selector (0,2,0) so the font swap reliably wins over parent
+   utilities. The word's COLOR is intentionally left unchanged: the hero sits on
+   a dark photo (white text) while the quote sits on cream (brand text), so a
+   single brand color would be illegible on one of them. The Instrument Serif
+   italic swap is a strong enough interaction signal on its own (this is how the
+   reference reads too) and stays legible on any background.
+
+   No transform/scale and no will-change: a non-integer scale(1.04) rasterizes
+   the glyphs and scales the bitmap → fuzzy edges, and a permanent
+   `will-change: transform` promotes the word to its own compositor layer, where
+   text loses sub-pixel antialiasing and renders faint/soft even at rest. Both
+   made the italic word look blurry, so the swap is now a crisp, instant
+   font-family + font-style change with no compositing. */
+.borkd-emoji-word.borkd-emoji-active {
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
 @media print {
   [data-cursor-dog] {
     display: none;

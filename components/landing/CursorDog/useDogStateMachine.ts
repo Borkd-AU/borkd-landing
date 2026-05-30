@@ -7,9 +7,22 @@ import {
   BARK_SHOUT_PEAK_SCALE,
   SNIFF_TILT_DEG,
   SHOUT_SVG_ORIGIN,
+  MORPH_FADE_MS,
+  MORPH_EMOJI_POP_MS,
+  MORPH_EMOJI_POP_FROM,
 } from './constants'
 import { applyTransition, type DogState, type SideEffects, type TransitionContext } from './stateMachine'
-import type { DogRefs, TimelineRefs } from './types'
+import type { DogRefs, EmojiRefs, TimelineRefs } from './types'
+
+/** Refs + setters the morph side-effects need, beyond the SVG DogRefs. */
+export interface MorphDeps {
+  /** Wrapper around the SVG dog+leash — faded out on morph. */
+  svgLayerRef: { current: HTMLDivElement | null }
+  /** The emoji DOM node — scaled/faded in on morph. */
+  emojiRef: EmojiRefs['emojiRef']
+  /** Set the document cursor to 'none' (true) or restore '' (false). */
+  setNativeCursorHidden: (hidden: boolean) => void
+}
 
 export interface StateMachineHandle {
   /** Stable reference exposing the current state — readable by RAF tick + dev hook */
@@ -24,12 +37,17 @@ export interface StateMachineHandle {
   timelineRefs: TimelineRefs
   /** Kill any in-flight trot tween. Caller's cleanup MUST call this on unmount. */
   killTrotTween: () => void
+  /** Kill any in-flight morph tween AND force-restore the native cursor.
+   *  Caller's cleanup MUST call this on unmount so a teardown mid-morph never
+   *  leaves the page with cursor:none. */
+  killMorphTween: () => void
   /** Setup runs inside the caller's gsap.context() to wire scheduling */
   setup: () => void
 }
 
 export function createDogStateMachine(
   refs: DogRefs,
+  morph: MorphDeps,
   initial: DogState = 'DISABLED',
 ): StateMachineHandle {
   const stateRef = { current: initial }
@@ -41,6 +59,11 @@ export function createDogStateMachine(
   // so ctx.revert() in the cleanup path can't reach it. Track it here so
   // the cleanup can explicitly kill it on unmount / route change.
   let trotTween: gsap.core.Tween | null = null
+  // Same callback-scope caveat for the morph fade tweens — tracked for cleanup.
+  // Two separate targets (emoji + SVG layer) → two tracked tweens, both killed
+  // in killMorphTween (Codex Stage-2 #2).
+  let morphTween: gsap.core.Tween | null = null
+  let svgMorphTween: gsap.core.Tween | null = null
 
   function scheduleBark(): void {
     if (barkTimerHandle != null) return
@@ -137,6 +160,75 @@ export function createDogStateMachine(
     trotTween = null
   }
 
+  // --- Emoji morph ---------------------------------------------------------
+  // enterMorph: fade the SVG layer out, pop the emoji in, hide native cursor.
+  // exitMorph:  reverse — fade SVG back, hide emoji, restore native cursor.
+  // Neither touches dogRef: the dog reappears exactly where it was. Both kill
+  // any in-flight morphTween first so rapid hover-in/out can't stack tweens.
+  function enterMorph(): void {
+    morph.setNativeCursorHidden(true)
+    morphTween?.kill()
+    svgMorphTween?.kill()
+    const svg = morph.svgLayerRef.current
+    const emoji = morph.emojiRef.current
+    if (svg) {
+      svgMorphTween = gsap.to(svg, {
+        opacity: 0,
+        duration: MORPH_FADE_MS,
+        ease: 'power2.out',
+        onComplete: () => { svgMorphTween = null },
+      })
+    }
+    if (emoji) {
+      morphTween = gsap.fromTo(
+        emoji,
+        { opacity: 0, scale: MORPH_EMOJI_POP_FROM },
+        {
+          opacity: 1,
+          scale: 1,
+          duration: MORPH_EMOJI_POP_MS,
+          ease: 'back.out(1.7)',
+          onComplete: () => { morphTween = null },
+        },
+      )
+    }
+  }
+
+  function exitMorph(): void {
+    morphTween?.kill()
+    svgMorphTween?.kill()
+    const svg = morph.svgLayerRef.current
+    const emoji = morph.emojiRef.current
+    if (svg) {
+      svgMorphTween = gsap.to(svg, {
+        opacity: 1,
+        duration: MORPH_FADE_MS,
+        ease: 'power2.out',
+        onComplete: () => { svgMorphTween = null },
+      })
+    }
+    if (emoji) {
+      morphTween = gsap.to(emoji, {
+        opacity: 0,
+        scale: MORPH_EMOJI_POP_FROM,
+        duration: MORPH_FADE_MS,
+        ease: 'power2.in',
+        onComplete: () => { morphTween = null },
+      })
+    }
+    // Restore the cursor LAST and unconditionally — even if refs are gone.
+    morph.setNativeCursorHidden(false)
+  }
+
+  function killMorphTween(): void {
+    morphTween?.kill()
+    morphTween = null
+    svgMorphTween?.kill()
+    svgMorphTween = null
+    // Safety: a teardown mid-morph must never leave the page cursor hidden.
+    morph.setNativeCursorHidden(false)
+  }
+
   function resetLastMoveAt(): void {
     // No-op stub — wired by the controller via injection if needed.
     // The controller's own state-change handler resets lastMoveAt on PARKED → IDLE.
@@ -152,6 +244,8 @@ export function createDogStateMachine(
     fireBark,
     trotOffscreen,
     resetLastMoveAt,
+    enterMorph,
+    exitMorph,
   }
 
   function transition(next: DogState): boolean {
@@ -191,6 +285,7 @@ export function createDogStateMachine(
     pendingTimers,
     timelineRefs: { barkTimelineRef, sniffTimelineRef },
     killTrotTween,
+    killMorphTween,
     setup,
   }
 }

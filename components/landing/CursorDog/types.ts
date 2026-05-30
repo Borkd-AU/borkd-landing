@@ -15,6 +15,7 @@ export type DogState =
   | 'BARKING'
   | 'PARKED'
   | 'PAUSED_INPUT'
+  | 'MORPHED'
 
 export type Mode = 'desktop' | 'mobile' | 'disabled'
 
@@ -31,6 +32,18 @@ export interface DogRefs {
   shoutRef: RefObject<SVGGElement | null>
   /** Top-level `<path>` for the leash. `d` updated each frame by the controller. */
   leashRef: RefObject<SVGPathElement | null>
+}
+
+/**
+ * The emoji-morph layer. A plain DOM `<div>` (NOT inside the SVG) so the emoji
+ * glyph renders with the system emoji font. Lives as a sibling of the SVG in the
+ * same fixed root; its `x`/`y` are written by a dedicated quickTo while MORPHED,
+ * and its `textContent` is set to the hovered element's `data-emoji`. Kept
+ * separate from DogRefs because the SVG layer fades while this stays visible
+ * (Codex #8).
+ */
+export interface EmojiRefs {
+  emojiRef: RefObject<HTMLDivElement | null>
 }
 
 export interface TimelineRefs {

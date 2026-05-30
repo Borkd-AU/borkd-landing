@@ -335,7 +335,7 @@ export function StepsSection() {
           style={{ fontVariationSettings: "'opsz' 14" }}
         >
           Think Google Maps, but made for{" "}
-          <em className="font-display italic">
+          <em className="borkd-emoji-word font-display italic" data-emoji="🦴">
             your dog&rsquo;s unique needs.
           </em>
         </h2>
