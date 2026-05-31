@@ -1,107 +1,106 @@
-# Checkpoint — 2026-05-22
+# Checkpoint — 2026-05-31 05:15
+_Mode: full | Skill version: 1.0_
 
-_Mode: quick. Full checkpoint flow skipped because the entire session's
-work was already committed, pushed, and Vercel-deployed before the
-clear request — there was no in-flight state to capture beyond what
-`git log` already records._
+## Done this session
+- **Cursor emoji-morph + wander feature committed** — commit `927e54b`
+  (19 files, +870/−90), pushed to `origin/feat/cursor-emoji-morph-wander`,
+  **PR #3** opened: https://github.com/Borkd-AU/borkd-landing/pull/3.
+  (Folds in the prior uncommitted branch work — CursorDog MORPHED state +
+  wander state machine — plus this session's additions below.)
+- **11 hover-emoji words across all 4 routes** (`borkd-emoji-word` +
+  `data-emoji` contract): home (🐕 more friends than you do, 🗺️ everywhere
+  worth ending up), /about (🏖️ beach, ✨ genuinely, 📍 Good places found),
+  /for-venues (🥣 water bowls, 🐾 real dog owners, 📍 Good places found),
+  /contact (👋 Say hi, ✉️ a line, 🦘 Sydney).
+- **Emoji pinned ABOVE the hovered word** (`morphEmojiY` in
+  `CursorDog/index.tsx` + `MORPH_EMOJI_GAP_PX=10` in `constants.ts`): emoji
+  bottom sits a fixed 10px above the word's top edge, so the word stays
+  readable for any word height and any cursor position within it; x still
+  follows the cursor. No top clamp (not covering the word is the hard
+  requirement; partly-offscreen glyph is the acceptable trade).
+- **Removed `scale(1.04)` + `will-change: transform`** from
+  `.borkd-emoji-word` in `app/globals.css` — they made the italic word
+  blurry/faint (non-integer scale rasterizes glyphs; permanent
+  will-change promotes to a compositor layer that loses sub-pixel AA). Now
+  a crisp instant serif-italic swap, no transform.
+- **contact `h1` aria-label fix** (`app/contact/page.tsx`): explicit `{" "}`
+  before `<br/>` so SplitText's textContent-derived aria-label reads
+  "Drop us a line." not "Drop usa line.".
+- **Removed dead `emoji` fields from StepsSection `steps[]`** — `StepCard`
+  never consumed them (inert).
+- **DESIGN-RULES.md #4 updated** (in `927e54b`): documents the cursor-hover
+  morph as the single allowed emoji exception. `wanderPhases.test.ts` added
+  to the `npm test` script.
+- **Codex 3-stage cross-validation: APPROVED, 45/50** (thread `f1ee83ee`).
+  It caught a tall-word clearance bug (fixed-em offset failed on the 88px
+  contact h1) and a self-contradicting top-clamp mid-review; both fixed.
 
-## Where we are
+## In progress
+- 없음. Feature는 commit + push + PR 완료. Working tree는 CHECKPOINT.md
+  (이 파일)와 untracked 환경 파일만 남음.
 
-- **Branch:** `main` synced with `origin/main` (0 ahead, 0 behind)
-- **HEAD:** `59e5f1d`
-- **Working tree:** clean (only `.bkit/` untracked, pre-existing)
-- **Vercel production:** `dpl_5j1Uo2ThKgWL6P4kDx38vAJjT5LE` — ● Ready,
-  alias https://borkd.app
+## Next
+1. **PR #3 실기기 시각 검증 + 머지** — 실제 데스크탑 브라우저(마우스 =
+   `pointer: fine`)에서 /about "beach", /for-venues "real dog owners",
+   /contact "a line" 등에 호버해서 (a) 이모지가 단어 **위**에 뜨고 단어가
+   안 가려지는지, (b) 이탤릭 전환이 **선명**한지(흐릿함 사라졌는지) 확인.
+   자동화로는 확인 불가(아래 Blockers). 문제 없으면 PR #3 머지.
+2. **`.claude/` + `.mcp.json` 커밋 여부 결정** — 이번 feature 커밋에서
+   의도적으로 제외함(프로젝트 툴링 설정, 별개 관심사). 트래킹할지 사용자 결정.
 
-## Shipped this session (newest → oldest)
+## Blockers / open questions
+- **호버 모핑 라이브 시각 확인 불가 (자동화 한정)** — claude-in-chrome /
+  chrome-devtools 자동화 브라우저가 `pointer: coarse`로 보고돼서 CursorDog
+  컨트롤러가 (정상적으로) 자기 자신을 비활성화함 → `[data-cursor-dog]`이
+  mount 안 됨. 그래서 모핑/호버를 자동화로 못 봄. 대신 DOM geometry로
+  검증함(모든 단어 갭 정확히 10px, covers_word=false). 실제 데스크탑에서만
+  확인 가능.
 
-```
-59e5f1d fix(landing): SSR hide pattern for reveals + misc bundle/hydration
-7d70424 perf(landing): tighten hot paths + plug GSAP cleanup leaks
-306ea47 fix(legal): SSR h2 ids on /privacy and /terms via SectionHeading
-eed5c87 refactor(lib): split gsap barrel + extract slugify and SectionHeading
-5cc6d3a feat(landing): smooth scroll on every page, TOC reads through smoother
-340c723 fix(contact): match SVG aspect ratio so girl-2 isn't squashed
-f31627f fix(landing): footer social icons split into separate rows on mobile
-018e497 fix(landing): TOC works correctly under ScrollSmoother + adds mobile pill
-bbc124d feat(landing): /contact page + floating TOC on legal pages
-f3cc9ff feat(landing): editorial motion on /about and /for-venues
-ea79b89 docs(design): mandate the control center via DESIGN-RULES.md
-6ff6561 feat(cursor-dog): natural motion + disable on touch devices
-```
+## Abandoned / dead ends
+- **고정 em 오프셋으로 이모지 띄우기** (`marginTop: -1.35em`) — 작은 본문
+  단어는 가렸지만 키 큰 단어(contact h1 `clamp(40px,8vw,88px)`)는 커서가
+  단어 아래쪽일 때 여전히 덮음. Codex가 LOOP. `morphEmojiY` (단어 top 기준)
+  로 대체.
+- **`Math.max(4, ...)` 화면밖 방지 clamp** — 화면 맨 위 단어에서 오히려
+  이모지를 단어 위로 도로 밀어 덮는 모순. Codex 지적으로 제거. 실제로 이
+  사이트엔 화면 top 근처 단어가 없어 발동도 안 하던 dead code였음.
+- **Step 카드에 이모지** (📝/❤️/💪) — 사용자가 "Step 카드는 빼기" 선택.
+  본문 카드에 큰 이모지가 과하다고 판단. 데이터 필드 제거함.
 
-## What landed
+## Runtime state
+- **Branch:** `feat/cursor-emoji-morph-wander` (origin과 sync, 0 ahead/behind)
+- **HEAD:** `927e54b`
+- **Working tree:** CHECKPOINT.md(이 파일)만 modified, `.claude/` +
+  `.mcp.json` untracked (의도적 미커밋 — 환경/툴링 설정)
+- **PR:** #3 open against `main` — https://github.com/Borkd-AU/borkd-landing/pull/3
+- **Dev server:** 실행 중 (next-server v16.2.4, PID 14661, :3000). 작업
+  중 globals.css 변경 후 recompile 확인됨. 다음 세션은 이미 떠있다고 가정
+  하거나 재시작.
+- **Migrations:** 없음 (코드만 수정)
+- **Env vars:** 변경 없음
+- **Vercel:** 이번 세션 deploy 안 함 (PR 머지 시 배포 예정)
 
-- **CursorDog** natural motion (turn-around squash/stretch, wander
-  gating on cursor stillness, speed-driven walking bob, softer
-  `quickTo`). Disabled entirely on `pointer: coarse`.
-- **Design rules** (`docs/DESIGN-RULES.md` + AGENTS.md header):
-  `/design-system` page is the single source of truth. 8 hard rules
-  + token inventory + PR checklist. Mandatory pre-read for any UI work.
-- **Subpages** with editorial scroll-reveal motion (`/about`,
-  `/for-venues`). `/contact` rebuilt with big-link list pattern +
-  tilt-spotlight cards; intentional 2-line hero ("Drop us / a line.").
-- **Long-form legal pages** (`/privacy`, `/terms`): server-rendered
-  `<SectionHeading>` puts stable slug ids on all 27 h2s so hash links
-  and no-JS visitors land correctly. Floating TOC: desktop sticky
-  left rail + mobile frosted-glass pill. Fades when footer enters
-  the lower 30% of the viewport.
-- **SmoothScroll** runs on every route. `ReadingShell` reads element
-  positions through a `viewportTop()` helper that switches between
-  `smoother.offset() - smoother.scrollTop()` and native rect — caches
-  offsets at mount/resize/safety-tick so per-tick reads are cheap.
-- **React/perf optimization round** — Codex 3-stage cross-validation,
-  Stage 2 score 28/50 → Stage 3 final 45/50 APPROVED:
-  - GSAP barrel split into 4 entrypoints (`lib/gsap.ts` core,
-    `lib/gsap-scroll.ts`, `lib/gsap-split.ts`, `lib/gsap-react.ts`)
-    so components only pull the plugins they need
-  - TiltSpotlightCard rect caching (no per-pointermove layout read)
-  - RevealHeading char tween retained for cleanup + SplitText
-    try/catch failsafe + fonts.ready cancellation guard
-  - CursorDog turn timeline captured by `ctx.add()`; trot tween
-    explicitly killed via `killTrotTween()` in cleanup
-  - BigLinkRow → server component (no client hooks needed)
-  - `next/image priority` → `preload` across SiteHeader and contact
-    (Next 16 deprecation)
-  - `[data-reveal]` SSR opacity:0 via globals.css, not useEffect
-  - SiteHeader SVG manual ReactDOM.preload kept; Image `preload`
-    prop removed (Next 16's Image preload does not emit
-    `<link rel="preload">` for SVGs)
+## Mental model notes
+- 호버 이모지의 핵심 제약: 이모지(64px)가 본문 텍스트(16px)보다 훨씬 커서,
+  "커서 중앙"에 두면 단어를 덮음. 해법은 **커서 y가 아니라 단어 box의 top
+  기준**으로 세로 위치를 잡는 것 (`morphEmojiY = wordTop - GAP - SIZE`).
+  커서는 x만 따라감. 이래야 단어 높이·커서 위치 무관하게 단어가 안 가려짐.
+- 이탤릭 단어 "흐릿함"의 두 원인: (1) 비정수 `scale()`은 글자를 비트맵화 후
+  확대 → 가장자리 흐림, (2) `will-change: transform`은 텍스트를 GPU 레이어로
+  올려 sub-pixel AA 상실 → 평소에도 가늘고 흐림. UI 텍스트엔 둘 다 피할 것.
+- 자동화 브라우저(headless/CDP)는 `pointer: coarse`로 인식되므로
+  `pointer: fine` gate가 걸린 인터랙션(CursorDog 등)은 자동화로 시각 확인
+  불가. geometry 계산이나 실기기로 검증해야 함.
 
-## Known limitations (intentionally deferred)
+---
 
-- `ReadingShell.tsx` still mixes React state with direct DOM class
-  mutation on the TOC anchors. Pragmatic — defends against the
-  StrictMode / portal / stale-closure issues we debugged for
-  several rounds. Codex did not flag it as a regression.
-
-## Cold-read pointers for the next session
-
-- **Design system** = `app/design-system/page.tsx` (control center) +
-  `docs/DESIGN-RULES.md` (the rules). Always read both before any
-  UI edit. Tokens only — no hex/rgba/hsl in components.
-- **Long-form legal page headings** use `<SectionHeading>` from
-  `components/landing/SectionHeading.tsx` so the id is in the SSR
-  HTML, not assigned by `ReadingShell` at runtime.
-- **GSAP imports** — core from `@/lib/gsap`; plugins from
-  `@/lib/gsap-scroll` (ScrollTrigger/ScrollSmoother/ScrollToPlugin),
-  `@/lib/gsap-split` (SplitText), `@/lib/gsap-react` (useGSAP).
-- **TOC behaviour** lives in `components/landing/ReadingShell.tsx`.
-  Three signal sources drive `syncToc`: scroll listener, IO on
-  each heading, and a 500ms safety setInterval. Each schedules via
-  a 16ms setTimeout throttle (rAF stalls when the tab is
-  backgrounded, so we don't use it). Offsets re-measured on resize
-  and every 2s via the safety tick.
-
-## Resume prompt for next session
+## Resume prompt
 
 Paste into a fresh Claude Code session:
 
-> Please read AGENTS.md FIRST and invoke the two session-start skills
-> listed there (`andrej-karpathy-skills:karpathy-guidelines` and
-> `codex-cowork`) BEFORE anything else. Then read this CHECKPOINT.md
-> and `docs/DESIGN-RULES.md` to get up to speed. Working tree should
-> be clean and synced with `origin/main`; production is live at
-> https://borkd.app. No in-flight work to resume — start fresh from
-> whatever the user asks next.
-</content>
+> Please read MEMORY.md, CHECKPOINT.md, and any other relevant .md files
+> to get up to speed. Give me a brief summary of where we left off and
+> what's next before we do anything. Specifically, pick up from: PR #3
+> (feat/cursor-emoji-morph-wander) 실기기 시각 검증 + 머지 — 실제 데스크탑
+> 브라우저에서 호버 시 이모지가 단어 위에 뜨고 안 가려지는지 + 이탤릭
+> 전환이 선명한지 확인하고, 문제 없으면 PR #3 머지.

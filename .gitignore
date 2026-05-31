@@ -55,6 +55,12 @@ serviceAccountKey.json
 # vercel
 .vercel
 
+# ─── Local / personal tooling config (not shared) ────────────────────
+# Per-developer MCP servers and Claude Code settings — personal setup,
+# not project-wide config. Each dev keeps their own.
+.mcp.json
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
