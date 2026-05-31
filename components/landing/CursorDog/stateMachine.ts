@@ -9,6 +9,7 @@ export type DogState =
   | 'BARKING'
   | 'PARKED'
   | 'PAUSED_INPUT'
+  | 'MORPHED'
 
 export interface TransitionContext {
   state: DogState
@@ -24,6 +25,10 @@ export interface SideEffects {
   fireBark: () => void
   trotOffscreen: () => void
   resetLastMoveAt: () => void
+  /** Enter the emoji-morph: fade the SVG dog+leash out, show the emoji, hide native cursor. */
+  enterMorph: () => void
+  /** Leave the emoji-morph: restore the SVG dog, hide the emoji, restore the native cursor. */
+  exitMorph: () => void
 }
 
 const VALID_EDGES: ReadonlySet<string> = new Set([
@@ -46,6 +51,19 @@ const VALID_EDGES: ReadonlySet<string> = new Set([
   'BARKING→PAUSED_INPUT',
   'PAUSED_INPUT→FOLLOWING',
   'PAUSED_INPUT→PARKED',
+  // Emoji-morph (hover a [data-emoji] element). Enter from any "live" cursor
+  // state; never from DISABLED or while paused on a text input (no morph while
+  // typing). Exit back to FOLLOWING (hover ended, cursor still active) or be
+  // interrupted to PARKED (pointer left the document / tab hidden) or
+  // PAUSED_INPUT (focus moved into a text field while morphed).
+  'IDLE→MORPHED',
+  'FOLLOWING→MORPHED',
+  'SNIFFING→MORPHED',
+  'BARKING→MORPHED',
+  'MORPHED→FOLLOWING',
+  'MORPHED→IDLE',
+  'MORPHED→PARKED',
+  'MORPHED→PAUSED_INPUT',
 ])
 
 export function applyTransition(
@@ -62,6 +80,10 @@ export function applyTransition(
 
   switch (next) {
     case 'IDLE':
+      // Switch is on the NEXT state, so leaving MORPHED must be cleaned up
+      // explicitly here (Codex #5) — otherwise cursor:none / hidden SVG / stale
+      // emoji survive a MORPHED→IDLE exit.
+      if (current === 'MORPHED') sideEffects.exitMorph()
       if (current === 'PARKED' || current === 'BARKING') {
         if (current === 'PARKED') sideEffects.resetLastMoveAt()
         sideEffects.scheduleBark()
@@ -71,6 +93,7 @@ export function applyTransition(
       break
 
     case 'FOLLOWING':
+      if (current === 'MORPHED') sideEffects.exitMorph()
       if (current === 'SNIFFING') {
         sideEffects.killSniffTimeline()
       }
@@ -92,6 +115,7 @@ export function applyTransition(
       break
 
     case 'PARKED':
+      if (current === 'MORPHED') sideEffects.exitMorph()
       sideEffects.killBarkTimeline()
       sideEffects.killSniffTimeline()
       sideEffects.clearBark()
@@ -100,10 +124,28 @@ export function applyTransition(
       break
 
     case 'PAUSED_INPUT':
+      if (current === 'MORPHED') sideEffects.exitMorph()
       sideEffects.killBarkTimeline()
       sideEffects.killSniffTimeline()
       sideEffects.clearBark()
       sideEffects.setBaselineInstant()
+      break
+
+    case 'MORPHED':
+      // Entering the emoji-morph. Kill the sniff/bark timelines, clear the
+      // pending bark, AND reset the visual baseline like the other interrupt
+      // states (Codex #6 + Stage-3 NEW): if hover starts mid-SNIFFING or
+      // mid-BARKING, killing the timeline alone would leave bobRef/headRef/
+      // shoutRef frozen mid-animation, so the dog reappears with a stale
+      // head-tilt or visible shout lines on morph exit. setBaselineInstant()
+      // zeroes those (it never touches dogRef, so the frozen follow position is
+      // preserved). Do NOT call trotOffscreen / move dogRef — the morph happens
+      // in place and the dog must reappear exactly where it was.
+      sideEffects.killBarkTimeline()
+      sideEffects.killSniffTimeline()
+      sideEffects.clearBark()
+      sideEffects.setBaselineInstant()
+      sideEffects.enterMorph()
       break
 
     case 'DISABLED':

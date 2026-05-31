@@ -70,8 +70,9 @@ export function SiteHeader() {
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             Find places that{" "}
-            <em className="font-display italic">actually work</em> for you
-            and your pup
+            <em className="borkd-emoji-word font-display italic" data-emoji="✅">actually work</em> for you
+            and{" "}
+            <span className="borkd-emoji-word" data-emoji="🐶">your pup</span>
           </h1>
         </div>
 
@@ -200,8 +201,9 @@ export function SiteHeaderAlt() {
             style={{ fontVariationSettings: "'opsz' 14" }}
           >
             Find places that{" "}
-            <em className="font-display italic">actually work</em> for you
-            and your pup
+            <em className="borkd-emoji-word font-display italic" data-emoji="✅">actually work</em> for you
+            and{" "}
+            <span className="borkd-emoji-word" data-emoji="🐶">your pup</span>
           </h1>
           <div className="flex flex-col items-center gap-4 lg:items-start">
             {/* Pre-launch CTA — single "Join the waitlist" button.

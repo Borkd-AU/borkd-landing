@@ -1,6 +1,7 @@
 // components/landing/CursorDog/DesktopDogSvg.tsx
 import { type Ref } from 'react'
-import type { DogRefs } from './types'
+import { MORPH_EMOJI_SIZE_PX } from './constants'
+import type { DogRefs, EmojiRefs } from './types'
 
 interface Props {
   dogRef: DogRefs['dogRef']
@@ -8,11 +9,15 @@ interface Props {
   headRef: DogRefs['headRef']
   shoutRef: DogRefs['shoutRef']
   leashRef: DogRefs['leashRef']
+  emojiRef: EmojiRefs['emojiRef']
   rootRef: React.RefObject<HTMLDivElement | null>
   svgRef: React.RefObject<SVGSVGElement | null>
+  /** Wrapper for ONLY the SVG dog+leash — faded out during MORPHED while the
+   *  emoji layer (a sibling) stays visible (Codex #8). */
+  svgLayerRef: React.RefObject<HTMLDivElement | null>
 }
 
-export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, rootRef, svgRef }: Props) {
+export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, emojiRef, rootRef, svgRef, svgLayerRef }: Props) {
   // The svg viewBox is set imperatively by the controller on mount + resize.
   // We render a placeholder viewBox here; the controller updates it before
   // the first frame paints.
@@ -29,6 +34,9 @@ export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, roo
         zIndex: 60,
       }}
     >
+      {/* SVG layer — faded out during MORPHED. The emoji layer below is a
+          sibling so it stays visible while this fades (Codex #8). */}
+      <div ref={svgLayerRef} style={{ position: 'absolute', inset: 0 }}>
       <svg
         ref={svgRef as Ref<SVGSVGElement>}
         viewBox="0 0 1 1"
@@ -77,6 +85,38 @@ export function DesktopDogSvg({ dogRef, bobRef, headRef, shoutRef, leashRef, roo
           </g>
         </g>
       </svg>
+      </div>
+
+      {/* Emoji-morph layer — a plain DOM node so the glyph uses the system emoji
+          font. Sibling of the SVG layer (Codex #8): the SVG fades during
+          MORPHED while this stays visible. Positioned at the top-left; the
+          controller writes x/y via quickTo — x follows the cursor (centered by
+          marginLeft below), y is pinned above the hovered word's top (see
+          morphEmojiY). opacity 0 until MORPHED. */}
+      <div
+        ref={emojiRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          // marginLeft -0.5em keeps the emoji horizontally centered on the
+          // cursor; x is added by quickTo via the translate() it writes. (GSAP
+          // composes its own translate; we keep the centering offset here via
+          // margin so they don't conflict.)
+          marginLeft: '-0.5em',
+          // No vertical margin: while MORPHED the controller drives y directly so
+          // the emoji's TOP sits at `wordTop - GAP - SIZE`, pinning its bottom a
+          // fixed gap above the hovered word's top edge. This keeps the word
+          // readable for ANY word height (a centered margin offset only cleared
+          // small body text and still covered tall headings — Codex follow-up).
+          marginTop: 0,
+          fontSize: MORPH_EMOJI_SIZE_PX,
+          lineHeight: 1,
+          opacity: 0,
+          willChange: 'transform, opacity',
+          userSelect: 'none',
+        }}
+      />
     </div>
   )
 }

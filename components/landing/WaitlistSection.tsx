@@ -112,7 +112,7 @@ export function WaitlistSection() {
           style={{ fontVariationSettings: "'opsz' 14" }}
         >
           Sydney first. Then{" "}
-          <em className="font-display italic">everywhere worth ending up</em>.
+          <em className="borkd-emoji-word font-display italic" data-emoji="🗺️">everywhere worth ending up</em>.
         </h2>
         <p
           className="leading-normal tracking-tight text-content-primary text-[clamp(16px,2.4vw,20px)]"

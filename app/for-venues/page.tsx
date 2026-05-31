@@ -68,15 +68,19 @@ export default function ForVenuesPage() {
                     number="02"
                     title="A profile built for what actually matters"
                   >
-                    Outdoor seating, water bowls, fenced areas, off-leash
-                    access — surface the details dog owners care about.
+                    Outdoor seating,{" "}
+                    <span className="borkd-emoji-word" data-emoji="🥣">water bowls</span>,
+                    fenced areas, off-leash access — surface the details dog
+                    owners care about.
                   </TiltSpotlightCard>
                   <TiltSpotlightCard
                     number="03"
                     title="Trust signals built in"
                   >
-                    Reviews from real dog owners, recency indicators,
-                    verified-venue badges as the platform grows.
+                    Reviews from{" "}
+                    <span className="borkd-emoji-word" data-emoji="🐾">real dog owners</span>,
+                    recency indicators, verified-venue badges as the platform
+                    grows.
                   </TiltSpotlightCard>
                 </div>
 
@@ -130,7 +134,7 @@ export default function ForVenuesPage() {
                 data-reveal
                 className="pt-4 text-center text-2xl text-content-brand sm:text-3xl"
               >
-                <em className="font-display italic">Good places, found.</em>
+                <em className="borkd-emoji-word font-display italic" data-emoji="📍">Good places, found.</em>
               </p>
             </article>
           </RevealScope>
